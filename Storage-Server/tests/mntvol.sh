@@ -14,13 +14,15 @@ usage () {
 # Create path for fs image
 FILENAME="${1##*/}"
 MNTNAME="${FILENAME%%.*}"
+MNTPATH="/mnt/hdfs/${MNTNAME}"
 
 if [ ! -e /mnt/hdfs/"$MNTNAME" ]; then
-    sudo mkdir /mnt/hdfs/"$MNTNAME"
+    sudo mkdir "$MNTPATH"
 else
     echo "unmounting any existing dir..."
-    sudo umount -d /mnt/hdfs/"$MNTNAME"
+    sudo umount -d "$MNTPATH"
 fi
 
 # Mount fs
-sudo mount -t auto -o loop "$1" /mnt/hdfs/"$MNTNAME" && echo "mounted img at /mnt/hdfs/$MNTNAME"
+sudo mount -t auto -o loop "$1" $MNTPATH && echo "mounted img at $MNTPATH"
+sudo chown -R $USER:$USER "$MNTPATH"
