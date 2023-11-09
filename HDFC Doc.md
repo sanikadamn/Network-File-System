@@ -60,7 +60,7 @@ To read a file, the following steps are performed:
 - The client sends a ``WRITE`` packet specifying the file path to write.
 - The NS identifies the SS to be accessed, based on a variety of parameters and sends the details of the SS (IP address, Port No) to the client. If there are no SS available, it shall return a ``ENOSERV`` packet. If the file path is not found or the client does not have sufficient permissions, it shall return a ``ENOFOUND`` packet.
 - The client sends a ``WRITE`` packet to the SS with the file path
-- The SS checks if a read/write lock is held currently. If yes, it shall send an ``EABUSY`` to the client, else it shall hold the lock
+- The SS checks if a read/write lock is held currently. If yes, it shall send an ``EBUSY`` to the client, else it shall hold the lock
 - On completing the write, the SS releases the write lock and sends a new heartbeat, containing the updated the file details.
 
 #### NS Errors:

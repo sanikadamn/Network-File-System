@@ -40,8 +40,6 @@ int main()
     // connect to storage server
 
 
-    // make threads
-    pthread_t threads[100];
-    
+    // use thread pool?
 }
 
