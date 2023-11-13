@@ -74,5 +74,5 @@ void free_file_maps (struct files* file_maps);
 
 buf_t* prepare_filemap_packet (const struct files file_maps);
 
-struct files* init_ss_filemaps();
+struct files* init_ss_filemaps(char* path);
 #endif

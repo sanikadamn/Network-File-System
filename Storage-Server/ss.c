@@ -6,7 +6,6 @@
 #include "thread_pool.h"
 #include "network.h"
 
-int ns_socket;
 struct files* ss_files;
 
 int usage (int argc, char* argv[]) {
@@ -30,14 +29,25 @@ int check_access (char* path) {
 void init_server (char* root, char* ns_ip, char* ns_port) {
     ss_files = init_ss_filemaps(root);
 
+    // Handle heartbeat
+    int ns = init_connection(LOCALHOST, DEFAULT_NS_PORT, 0);
+    if (ns == -1)
+        return;
+
+    int client_socket = init_connection(LOCALHOST, DEFAULT_CLIENT_PORT, 1);
+    if (client_socket == -1)
+        return;
+
     tpool_t* thread_pool = tpool_create(NUM_THREADS);
 
-    // Handle heartbeat
-    int socket = init_connection(LOCALHOST, DEFAULT_SS_PORT);
+    tpool_work(thread_pool, send_heartbeat, (void*)ns);
 
-    tpool_work(thread_pool, send_heartbeat, NULL);
+    struct listen_args args_client = {thread_pool, client_socket};
+    tpool_work(thread_pool, listen_connections, (void *)&args_client);
 
-    tpool_work(thread_pool, listen_connections, (void *){socket, thread_pool});
+    tpool_wait(thread_pool);
+    printf("No more connections left. Closing the server\n");
+    tpool_destroy(thread_pool);
 }
 
 int main (int argc, char* argv[]) {

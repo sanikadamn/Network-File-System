@@ -1,4 +1,3 @@
-#include <bits/pthreadtypes.h>
 #include <stdlib.h>
 #include <pthread.h>
 
@@ -36,6 +35,27 @@ tpool_work_t* work_malloc (tpool_func_t func, void* args) {
     return work;
 }
 
+static tpool_work_t* tpool_work_get(tpool_t *tm)
+{
+    tpool_work_t *work;
+
+    if (tm == NULL)
+        return NULL;
+
+    work = tm->head;
+    if (work == NULL)
+        return NULL;
+
+    if (work->next == NULL) {
+        tm->head = NULL;
+        tm->tail  = NULL;
+    } else {
+        tm->tail = work->next;
+    }
+
+    return work;
+}
+
 void tpool_worker (void* arg) {
     tpool_t* thread_pool = arg;
 
@@ -46,12 +66,10 @@ void tpool_worker (void* arg) {
         while (thread_pool->head == NULL && !thread_pool->stop)
             pthread_cond_wait(&(thread_pool->work_cond), &(thread_pool->work_mutex));
 
-        tpool_work_t* work = thread_pool->head;
-        thread_pool->head = work->next;
-        if (work->next == NULL) {
-            thread_pool->tail = NULL;
-        }
+        if (thread_pool->stop)
+            break;
 
+        tpool_work_t* work = tpool_work_get(thread_pool);
         thread_pool->working_thread_cnt++;
 
         pthread_mutex_unlock(&(thread_pool->work_mutex));
@@ -75,7 +93,10 @@ void tpool_worker (void* arg) {
 
     // No longer in the thread pool
     thread_pool->thread_cnt--;
-    pthread_cond_signal(&(thread_pool->work_cond));
+    if (!thread_pool->thread_cnt)
+        pthread_cond_signal(&(thread_pool->work_cond));
+    pthread_mutex_unlock(&(thread_pool->work_mutex));
+    return;
 }
 
 int tpool_work (tpool_t *tp, tpool_func_t function, void *args) {
@@ -103,7 +124,7 @@ void tpool_wait (tpool_t *tp) {
 
     pthread_mutex_lock(&(tp->work_mutex));
     while (1) {
-        if ((!tp->stop && tp->working_thread_cnt == 0) || (tp->stop && tp->thread_cnt != 0)) {
+        if ((!tp->stop && tp->working_thread_cnt != 0) || (tp->stop && tp->thread_cnt != 0)) {
             pthread_cond_wait(&(tp->working_cond), &(tp->work_mutex));
         } else {
             break;

@@ -13,8 +13,12 @@
 #define LOCALHOST "127.0.0.1"
 #endif
 
-#ifndef DEFAULT_SS_PORT
-#define DEFAULT_SS_PORT 3112
+#ifndef DEFAULT_NS_PORT
+#define DEFAULT_NS_PORT "3112"
+#endif
+
+#ifndef DEFAULT_CLIENT_PORT
+#define DEFAULT_CLIENT_PORT "2109"
 #endif
 
 #endif // CONSTANTS_H_
