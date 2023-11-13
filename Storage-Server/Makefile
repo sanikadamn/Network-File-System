@@ -25,6 +25,17 @@ EXEC = ss
 # Default target to build the executable
 all: $(EXEC)
 
+asan: CFLAGS  += -fsanitize=address -fno-common -DASAN
+asan: LDFLAGS += -fsanitize=address -fno-common -DASAN
+tsan: CFLAGS  += -fsanitize=thread -DTSAN
+tsan: LDFLAGS += -fsanitize=thread -DTSAN
+tsan asan: CFLAGS  += -fsanitize=undefined -DUSAN
+tsan asan: LDFLAGS += -fsanitize=undefined -DUSAN
+tsan asan: debug
+
+debug: CFLAGS += -DDEBUG_ON -g
+debug: all
+
 # Compile the source files into object files and generate dependencies
 %.o: %.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
