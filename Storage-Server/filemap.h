@@ -1,10 +1,19 @@
 #ifndef FILEMAP__
 #define FILEMAP__
 
+
+// Required to use the correct POSIX version while compiling with C99 standards
+#if __STDC_VERSION__ >= 199901L
+# define _XOPEN_SOURCE 600
+#else
+# define _XOPEN_SOURCE 500
+#endif /* __STDC_VERSION__ */
+
+
+#include <time.h>
 #include <semaphore.h>
 
 #include "../common/buffer.h"
-
 
 /*
 ** Stores file metadata.
@@ -24,7 +33,7 @@ struct file_metadata {
 };
 
 struct files {
-    struct buffer files;
+    struct buffer files; // type: file_metadata
 
     sem_t data_write_lock;
     sem_t data_read_lock;
@@ -52,10 +61,18 @@ str_t* retrieve_remote_filename (str_t local_filename);
 ** Initialise file mappings. This should be run only on startup, and reads the filesystem
 ** to obtain all files on the system.
 */
-void init_file_maps (struct files* file_maps);
+void file_maps_alloc (struct files* file_maps);
 
 void insert_file_map (struct files* file_maps, struct file_metadata new_file);
 void delete_file_map (struct files* file_maps, str_t remote_filename);
 
 void free_file_maps (struct files* file_maps);
+
+/*
+** Prepare file maps into a packet that can be sent over to the naming server
+*/
+
+buf_t* prepare_filemap_packet (const struct files file_maps);
+
+struct files* init_ss_filemaps();
 #endif

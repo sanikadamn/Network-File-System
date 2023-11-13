@@ -6,6 +6,9 @@
 #include "thread_pool.h"
 #include "network.h"
 
+int ns_socket;
+struct files* ss_files;
+
 int usage (int argc, char* argv[]) {
     fprintf(stderr, "invalid usage!\n");
 
@@ -25,17 +28,16 @@ int check_access (char* path) {
 }
 
 void init_server (char* root, char* ns_ip, char* ns_port) {
-    init_filemaps(root);
-
-    send_init(ns_ip, ns_port);
+    ss_files = init_ss_filemaps(root);
 
     tpool_t* thread_pool = tpool_create(NUM_THREADS);
 
     // Handle heartbeat
-    char* ns_details[2] = {ns_ip, ns_port};
-    tpool_work(thread_pool, send_heartbeat, ns_details);
+    int socket = init_connection(LOCALHOST, DEFAULT_SS_PORT);
 
-    tpool_work(thread_pool, listen_connections, thread_pool);
+    tpool_work(thread_pool, send_heartbeat, NULL);
+
+    tpool_work(thread_pool, listen_connections, (void *){socket, thread_pool});
 }
 
 int main (int argc, char* argv[]) {
