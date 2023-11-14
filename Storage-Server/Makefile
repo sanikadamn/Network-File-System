@@ -62,5 +62,8 @@ $(EXEC): $(OBJS)
 clean:
 	rm -f *.o *.d $(EXEC)
 
+tidy:
+	clang-tidy -header-filter=.* $(SRCS)
+
 format:
 	clang-format -i $(SRCS)
