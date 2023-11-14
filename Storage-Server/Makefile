@@ -18,11 +18,12 @@ CFLAGS = -Wall -g -lpthread
 DEPS = $(wildcard *.h)
 
 SRCS = \
-	ss.c               \
+	ss.c \
 	../common/buffer.c \
-	thread_pool.c      \
-	filemap.c          \
-	network.c          \
+	thread_pool.c \
+	filemap.c \
+	network.c \
+
 OBJS = $(SRCS:.c=.o)
 
 # Executeable name
