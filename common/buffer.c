@@ -10,7 +10,7 @@ int buf_malloc (struct buffer* b, size_t el_size, size_t len) {
         b->capacity = len;
         b->len = 0;
         b->data = malloc(el_size * len);
-        return -(b->data == NULL); // if malloc returned NULL, it required checking error code.
+        return -(b->data != NULL); // if malloc returned NULL, it required checking error code.
     }
 }
 
