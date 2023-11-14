@@ -1,7 +1,71 @@
+#include <dirent.h>
+#include <sys/stat.h>
 #include <semaphore.h>
 #include <stdlib.h>
+#include <errno.h>
+#include <stdlib.h>
+#include <stdio.h>
+#include <string.h>
 
 #include "filemap.h"
+
+int is_accessible (char* filename) {
+    return 1;
+}
+
+void get_files (buf_t* f, char* path) {
+    DIR* dir = opendir(path);
+    if (dir == NULL) {
+        perror(path);
+        return;
+    }
+
+    // Frees any stored buffer
+    buf_free(f);
+    buf_malloc(f, sizeof(struct file_metadata), 32); // Allocates with 32 elements to prevent repeated allocations for small sizes
+
+    int folder_pathlen = strlen(path);
+
+    struct stat st;
+    struct dirent* ent;
+    while ((ent = readdir(dir))) {
+        // check if number has reached capacity, and if not, continue filling. else resize
+        if (f->capacity == f->len) {
+            buf_resize(f, 2 * f->capacity);
+        }
+
+        struct file_metadata* file = &((struct file_metadata*)f->data)[f->len++];
+
+        str_t filename;
+        int filename_len = strlen(ent->d_name);
+
+        printf("file found: %s\n", ent->d_name);
+        // Look up file properties
+        int err = fstatat(dirfd(dir), ent->d_name, &st, 0);
+        if (err == -1) {
+            // TODO: Custom error mechanism??
+            perror(ent->d_name);
+            continue;
+        }
+
+        // Ignore if not a file
+        if ((st.st_mode & S_IFMT) != S_IFREG) {
+            f->len--;
+            continue;
+        }
+
+        // Check if it is supposed to be accessible by the storage server
+        if (is_accessible(ent->d_name)) {
+            // Is accessible. Continue
+            buf_malloc(&file->local_filename, sizeof(char), filename_len + 1);
+            strncpy((char*)(file->local_filename.data), ent->d_name, filename_len);
+            file->local_filename.len = filename_len;
+            file->file_size = st.st_size;
+        } else {
+            f->len--;
+        }
+    }
+}
 
 struct files* init_ss_filemaps(char* path) {
     struct files* f = malloc(sizeof(struct files));
@@ -10,7 +74,7 @@ struct files* init_ss_filemaps(char* path) {
     sem_init(&f->data_read_lock, 0, 1);
     sem_init(&f->data_write_lock, 0, 1);
 
-    buf_malloc(&f->files, sizeof(struct file_metadata), 1);
+    get_files(&f->files, path);
 
     return f;
 }

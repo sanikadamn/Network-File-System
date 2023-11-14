@@ -9,7 +9,7 @@
 # define _XOPEN_SOURCE 500
 #endif /* __STDC_VERSION__ */
 
-
+#include <stdint.h>
 #include <time.h>
 #include <semaphore.h>
 
@@ -23,10 +23,8 @@
 */
 struct file_metadata {
     str_t remote_filename;
-    int file_size;
-    struct timespec last_modified_time;
-    // TODO: find a way to store permissions
-
+    str_t local_filename;
+    size_t file_size;
     sem_t file_write_lock;
     sem_t file_read_lock;
     sem_t file_queue;
@@ -44,10 +42,7 @@ struct files {
 /*
 ** The local file name is unique. The goal is to be easy to search and sort.
 ** Right now, however, we have a simple base64 translation. Since we only deal with
-** base64 pathnames, we can also use unicode.
-**
-** Why use base64? It is easy to reverse to obtain the remote filename from the
-** local representation of a file.
+** base64 pathnames, we can also use unicode. This also helps to deal with uniqueness
 **
 ** Why not store the entire tree? On a networked file system, files in the same folder
 ** may exist on different drives. Recreating the folders would end up becoming impossibly
@@ -69,9 +64,20 @@ void delete_file_map (struct files* file_maps, str_t remote_filename);
 void free_file_maps (struct files* file_maps);
 
 /*
+ * Checks if file is accessible by the storage server.
+ * Uses regex patterns stored in .ssignore (not yet, waiting for TA approval)
+ */
+int is_accessible(char* filename);
+
+/*
+ * Fills file_data with all the files that are accesible by the ss_info.
+ *
+ */
+void get_files (buf_t* file_data, char* path);
+
+/*
 ** Prepare file maps into a packet that can be sent over to the naming server
 */
-
 buf_t* prepare_filemap_packet (const struct files file_maps);
 
 struct files* init_ss_filemaps(char* path);
