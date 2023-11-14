@@ -3,6 +3,10 @@
 usage () {
     echo "Invalid usage!"
     echo "Usage: $0 image-path block-size block-count"
+    echo ""
+    echo "Creates new volume at path image-path, with block-count blocks"
+    echo "each of which is block-size bytes. Uses dd under the hood, so "
+    echo "arguments defining sizes as K,M,G also work."
     exit
 }
 
