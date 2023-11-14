@@ -61,3 +61,6 @@ $(EXEC): $(OBJS)
 # Clean up generated files
 clean:
 	rm -f *.o *.d $(EXEC)
+
+format:
+	clang-format -i $(SRCS)
