@@ -24,6 +24,8 @@ struct tpool {
     size_t stop;
 };
 
+
+// Initialises work unit
 tpool_work_t* work_malloc (tpool_func_t func, void* args) {
     tpool_work_t* work = malloc(sizeof(tpool_work_t));
 
@@ -35,8 +37,9 @@ tpool_work_t* work_malloc (tpool_func_t func, void* args) {
     return work;
 }
 
-static tpool_work_t* tpool_work_get(tpool_t *tm)
-{
+// Gets work from the work queue.
+// Assumes that work_mutex is held, otherwise can run into race conditions
+static tpool_work_t* tpool_work_get(tpool_t *tm) {
     tpool_work_t *work;
 
     if (tm == NULL)
@@ -56,6 +59,9 @@ static tpool_work_t* tpool_work_get(tpool_t *tm)
     return work;
 }
 
+// Main function that runs inside each thread.
+// Waits for work to be added to the queue, and picks it off.
+// Incase there is no work, goes to sleep
 void tpool_worker (void* arg) {
     tpool_t* thread_pool = arg;
 

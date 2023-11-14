@@ -17,26 +17,36 @@ CC = gcc
 CFLAGS = -Wall -g -lpthread
 DEPS = $(wildcard *.h)
 
-# Define the source files and the executable name
-SRCS = ss.c ../common/buffer.c thread_pool.c filemap.c network.c
+SRCS = \
+	ss.c               \
+	../common/buffer.c \
+	thread_pool.c      \
+	filemap.c          \
+	network.c          \
 OBJS = $(SRCS:.c=.o)
+
+# Executeable name
 EXEC = ss
 
 # Default target to build the executable
 all: $(EXEC)
 
+# Turns on different sanitizers.
+# tsan: turns on Thread Sanitizer, Undefined Behaviour Sanitizer (ubsan)
+# asan: turns on Address Sanitizer, Undeined Behvaiour Sanitizer (ubsan)
 asan: CFLAGS  += -fsanitize=address -fno-common -DASAN
 asan: LDFLAGS += -fsanitize=address -fno-common -DASAN
 tsan: CFLAGS  += -fsanitize=thread -DTSAN
 tsan: LDFLAGS += -fsanitize=thread -DTSAN
-tsan asan: CFLAGS  += -fsanitize=undefined -DUSAN
-tsan asan: LDFLAGS += -fsanitize=undefined -DUSAN
+tsan asan: CFLAGS  += -fsanitize=undefined -DUBSAN
+tsan asan: LDFLAGS += -fsanitize=undefined -DUBSAN
 tsan asan: debug
 
+# Turns on debug
 debug: CFLAGS += -DDEBUG_ON -g
 debug: all
 
-# Compile the source files into object files and generate dependencies
+# Compile the source files into object files and generate dependencies on header files
 %.o: %.c
 	$(CC) $(CFLAGS) -MMD -MP -c $< -o $@
 
