@@ -7,4 +7,6 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
-#define PORT 8000
+#define DEFAULT_NS_PORT "3112"
+
+#include "connect_storage_server.h"
