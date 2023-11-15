@@ -10,3 +10,5 @@
 #define DEFAULT_NS_PORT 3112
 
 #include "connect_storage_server.h"
+#include "client_operations.h"
+#include "../error_codes.h"

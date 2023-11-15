@@ -15,6 +15,9 @@ void *getFileInfo(void *arg);
 typedef struct file_info{
     char path[1024];
     struct sockaddr_in storageserver;
+    int storageserver_socket;
+    int write_perm; // 0 for no, 1 for yes
+    int read_perm;  // 0 for no, 1 for yes
 } File;
 
 extern pthread_mutex_t file_lock;

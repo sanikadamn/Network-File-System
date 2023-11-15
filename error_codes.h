@@ -1,3 +1,4 @@
+#define NO_ERROR 0
 #define ENOSERV 1
 #define ENOPERM 2
 #define EINVAL 3

@@ -51,5 +51,9 @@ int main()
     pthread_create(&connect_servers, NULL, connectStorageServer, NULL);
 
     // use thread pool?
+
+    // get client connections
+    pthread_t connect_clients;
+    pthread_create(&connect_clients, NULL, connectClientToNS, NULL);
 }
 
