@@ -78,6 +78,17 @@ int write_tofile(Request *req, Server *client)
     // for writing, check if the user has permissions + if the file exists
     pthread_mutex_lock(&file_lock);
     int index = findFile(req->path);
+    if (filecount == 0)
+    {
+        // send error to the client
+        pthread_mutex_unlock(&file_lock);
+        Response *res = (Response *)malloc(sizeof(Response));
+        res->errortype = ENOSERV;
+        int err = send(client->server_socket, res, sizeof(Response), 0);
+        if (err < 0)
+            perror("send");
+        return -1;
+    }
     if(index == -1)
     {
         // send error to the client
@@ -118,6 +129,17 @@ int read_fromfile(Request *req, Server *client)
     // for reading, check if the user has permissions + if the file exists
     pthread_mutex_lock(&file_lock);
     int index = findFile(req->path);
+    if (filecount == 0)
+    {
+        // send error to the client
+        pthread_mutex_unlock(&file_lock);
+        Response *res = (Response *)malloc(sizeof(Response));
+        res->errortype = ENOSERV;
+        int err = send(client->server_socket, res, sizeof(Response), 0);
+        if (err < 0)
+            perror("send");
+        return -1;
+    }
     if(index == -1)
     {
         // send error to the client
@@ -154,7 +176,8 @@ int read_fromfile(Request *req, Server *client)
 
 int delete_file()
 {
-
+    // for deleting, check what servers the files are in and send delete commands to all of them
+    
 }
 
 int create_file()
