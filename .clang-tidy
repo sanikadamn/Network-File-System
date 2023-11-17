@@ -1,15 +1,11 @@
 ---
-Checks:          'clang-diagnostic-*,clang-analyzer-*,bugprone-*,modernize-*,clanganalyzer-*,concurrency-*,misc-*,portability-*,-misc-unused-paramters,-bugprone-easily-swappable-parameters,-clang-analyzer-core.UndefinedBinaryOperatorResult'
+Checks:          'clang-diagnostic-*,clang-analyzer-*,bugprone-*,clanganalyzer-*,concurrency-*,misc-*,portability-*,-misc-unused-paramters,-bugprone-easily-swappable-parameters,-clang-analyzer-core.UndefinedBinaryOperatorResult'
 WarningsAsErrors: ''
 HeaderFilterRegex: '.*'
 AnalyzeTemporaryDtors: false
 FormatStyle:     none
 
 CheckOptions:
-  - key:             modernize-replace-auto-ptr.IncludeStyle
-    value:           llvm
-  - key:             modernize-use-auto.MinTypeNameLength
-    value:           '5'
   - key:             bugprone-reserved-identifier.Invert
     value:           'false'
   - key:             bugprone-narrowing-conversions.PedanticMode
@@ -20,16 +16,8 @@ CheckOptions:
     value:           'L;LL;LU;LLU'
   - key:             bugprone-narrowing-conversions.WarnOnFloatingPointNarrowingConversion
     value:           'true'
-  - key:             modernize-use-default-member-init.UseAssignment
-    value:           'false'
   - key:             bugprone-assert-side-effect.IgnoredFunctions
     value:           __builtin_expect
-  - key:             modernize-use-override.AllowOverrideAndFinal
-    value:           'false'
-  - key:             modernize-pass-by-value.ValuesOnly
-    value:           'false'
-  - key:             modernize-loop-convert.IncludeStyle
-    value:           llvm
   - key:             cert-str34-c.DiagnoseSignedUnsignedCharComparisons
     value:           'false'
   - key:             bugprone-narrowing-conversions.WarnWithinTemplateInstantiation
@@ -46,16 +34,6 @@ CheckOptions:
     value:           'true'
   - key:             bugprone-argument-comment.StrictMode
     value:           '0'
-  - key:             modernize-use-nodiscard.ReplacementString
-    value:           '[[nodiscard]]'
-  - key:             misc-non-private-member-variables-in-classes.IgnoreClassesWithAllMemberVariablesBeingPublic
-    value:           'false'
-  - key:             modernize-replace-random-shuffle.IncludeStyle
-    value:           llvm
-  - key:             modernize-loop-convert.MakeReverseRangeHeader
-    value:           ''
-  - key:             modernize-use-bool-literals.IgnoreMacros
-    value:           'true'
   - key:             bugprone-unhandled-self-assignment.WarnOnlyIfThisHasSuspiciousField
     value:           'true'
   - key:             google-readability-namespace-comments.ShortNamespaceLines
@@ -64,26 +42,12 @@ CheckOptions:
     value:           ''
   - key:             misc-definitions-in-headers.HeaderFileExtensions
     value:           ';h;hh;hpp;hxx'
-  - key:             modernize-avoid-bind.PermissiveParameterList
-    value:           'false'
-  - key:             modernize-use-override.FinalSpelling
-    value:           final
   - key:             bugprone-argument-comment.CommentNullPtrs
     value:           '0'
-  - key:             modernize-loop-convert.UseCxx20ReverseRanges
-    value:           'true'
-  - key:             modernize-use-noexcept.ReplacementString
-    value:           ''
-  - key:             modernize-use-using.IgnoreMacros
-    value:           'true'
   - key:             bugprone-narrowing-conversions.WarnOnIntegerNarrowingConversion
     value:           'true'
-  - key:             modernize-loop-convert.NamingStyle
-    value:           CamelCase
   - key:             bugprone-suspicious-include.ImplementationFileExtensions
     value:           'c;cc;cpp;cxx'
-  - key:             modernize-loop-convert.MakeReverseRangeFunction
-    value:           ''
   - key:             bugprone-suspicious-include.HeaderFileExtensions
     value:           ';h;hh;hpp;hxx'
   - key:             bugprone-argument-comment.CommentIntegerLiterals
@@ -92,8 +56,6 @@ CheckOptions:
     value:           llvm
   - key:             bugprone-suspicious-missing-comma.SizeThreshold
     value:           '5'
-  - key:             modernize-pass-by-value.IncludeStyle
-    value:           llvm
   - key:             bugprone-sizeof-expression.WarnOnSizeOfThis
     value:           'true'
   - key:             bugprone-string-constructor.WarnOnLargeLength
@@ -104,26 +66,16 @@ CheckOptions:
     value:           '0'
   - key:             bugprone-argument-comment.CommentCharacterLiterals
     value:           '0'
-  - key:             modernize-use-nullptr.NullMacros
-    value:           'NULL'
-  - key:             modernize-make-shared.IgnoreMacros
-    value:           'true'
   - key:             bugprone-dynamic-static-initializers.HeaderFileExtensions
     value:           ';h;hh;hpp;hxx'
   - key:             bugprone-suspicious-enum-usage.StrictMode
     value:           'false'
   - key:             bugprone-suspicious-missing-comma.MaxConcatenatedTokens
     value:           '5'
-  - key:             modernize-use-transparent-functors.SafeMode
-    value:           'false'
-  - key:             modernize-make-shared.IgnoreDefaultInitialization
-    value:           'true'
   - key:             bugprone-implicit-widening-of-multiplication-result.UseCXXHeadersInCppSources
     value:           'true'
   - key:             bugprone-not-null-terminated-result.WantToUseSafeFunctions
     value:           'true'
-  - key:             modernize-make-shared.IncludeStyle
-    value:           llvm
   - key:             bugprone-string-constructor.LargeLengthThreshold
     value:           '8388608'
   - key:             misc-throw-by-value-catch-by-reference.CheckThrowTemporaries
@@ -136,32 +88,18 @@ CheckOptions:
     value:           ''
   - key:             bugprone-exception-escape.FunctionsThatShouldNotThrow
     value:           ''
-  - key:             modernize-loop-convert.MaxCopySize
-    value:           '16'
   - key:             bugprone-argument-comment.CommentStringLiterals
     value:           '0'
   - key:             portability-simd-intrinsics.Suggest
     value:           'false'
-  - key:             modernize-use-override.IgnoreDestructors
-    value:           'false'
-  - key:             modernize-make-unique.IgnoreMacros
-    value:           'true'
-  - key:             modernize-make-shared.MakeSmartPtrFunctionHeader
-    value:           '<memory>'
   - key:             misc-non-private-member-variables-in-classes.IgnorePublicMemberVariables
     value:           'false'
   - key:             bugprone-sizeof-expression.WarnOnSizeOfConstant
     value:           'true'
-  - key:             modernize-make-unique.IgnoreDefaultInitialization
-    value:           'true'
-  - key:             modernize-make-unique.IncludeStyle
-    value:           llvm
   - key:             bugprone-argument-comment.CommentBoolLiterals
     value:           '0'
   - key:             bugprone-argument-comment.CommentUserDefinedLiterals
     value:           '0'
-  - key:             modernize-use-override.OverrideSpelling
-    value:           override
   - key:             concurrency-mt-unsafe.FunctionSet
     value:           any
   - key:             google-readability-braces-around-statements.ShortStatementLines
@@ -170,23 +108,13 @@ CheckOptions:
     value:           '_XOPEN_SOURCE'
   - key:             portability-restrict-system-includes.Includes
     value:           '*'
-  - key:             modernize-use-emplace.IgnoreImplicitConstructors
-    value:           'false'
-  - key:             modernize-make-unique.MakeSmartPtrFunctionHeader
-    value:           '<memory>'
   - key:             bugprone-signal-handler.AsyncSafeFunctionSet
     value:           POSIX
-  - key:             modernize-use-equals-delete.IgnoreMacros
-    value:           'true'
   - key:             bugprone-misplaced-widening-cast.CheckImplicitCasts
     value:           'false'
   - key:             bugprone-suspicious-missing-comma.RatioThreshold
     value:           '0.200000'
-  - key:             modernize-loop-convert.MinConfidence
-    value:           reasonable
   - key:             misc-definitions-in-headers.UseHeaderFileExtension
-    value:           'true'
-  - key:             modernize-use-noexcept.UseNoexceptFalse
     value:           'true'
   - key:             google-readability-namespace-comments.SpacesBeforeComments
     value:           '2'
@@ -208,8 +136,6 @@ CheckOptions:
     value:           ''
   - key:             bugprone-signed-char-misuse.DiagnoseSignedUnsignedCharComparisons
     value:           'true'
-  - key:             modernize-use-default-member-init.IgnoreMacros
-    value:           'true'
   - key:             llvm-qualified-auto.AddConstToQualified
     value:           'false'
   - key:             google-readability-function-size.StatementThreshold
@@ -220,22 +146,12 @@ CheckOptions:
     value:           'true'
   - key:             bugprone-reserved-identifier.AggressiveDependentMemberLookup
     value:           'false'
-  - key:             modernize-raw-string-literal.DelimiterStem
-    value:           lit
-  - key:             modernize-use-equals-default.IgnoreMacros
-    value:           'true'
   - key:             misc-throw-by-value-catch-by-reference.WarnOnLargeObjects
-    value:           'false'
-  - key:             modernize-raw-string-literal.ReplaceShorterLiterals
-    value:           'false'
-  - key:             modernize-use-auto.RemoveStars
     value:           'false'
   - key:             bugprone-implicit-widening-of-multiplication-result.IncludeStyle
     value:           llvm
   - key:             portability-simd-intrinsics.Std
     value:           ''
-  - key:             modernize-replace-disallow-copy-and-assign-macro.MacroName
-    value:           DISALLOW_COPY_AND_ASSIGN
   - key:             llvm-else-after-return.WarnOnUnfixable
     value:           'false'
 ...
