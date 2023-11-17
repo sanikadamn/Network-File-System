@@ -17,7 +17,8 @@
 #include <string.h>
 #include <pthread.h>
 
-#include "serialise.h"
+#include "buffer.h"
+#include "serialize.h"
 
 // Define a mutex for thread safety
 pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -25,7 +26,7 @@ pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 // Notice: This code was AI-generated for the given prompts.
 
 // Serialize a string into a new dynamically allocated buffer
-char* serialize_string(const char* src) {
+str_t* serialize_string(const char* src) {
     // Acquire the mutex lock for thread safety
     pthread_mutex_lock(&mutex);
 
@@ -40,9 +41,10 @@ char* serialize_string(const char* src) {
     }
 
     // Allocate a new buffer for the escaped string
-    char* escaped_buffer = (char*)malloc(escaped_length + 1); // +1 for null-termination
+    str_t* escaped_buffer = malloc(sizeof(str_t));
+    buf_malloc(escaped_buffer, sizeof(char), escaped_length + 1);
 
-    if (escaped_buffer == NULL) {
+    if (escaped_buffer == NULL || escaped_buffer->data == NULL) {
         // TODO: Handle memory allocation failure
         fprintf(stderr, "Error: Memory allocation failed during serialization\n");
         pthread_mutex_unlock(&mutex);
@@ -55,15 +57,17 @@ char* serialize_string(const char* src) {
         int escape_char = (src[i] < 32 || src[i] > 126 || src[i] == '\\');
         if (src[i] < 32 || src[i] > 126 || src[i] == '\\') {
             // Non-printable character or backslash, escape it
-            snprintf(&escaped_buffer[j], 5, "\\x%02X", src[i]);
+            snprintf(&((char *)escaped_buffer->data)[j], 5, "\\x%02X", src[i]);
         } else {
             // Copy printable character as is
-            escaped_buffer[j] = src[i];
+            ((char *)escaped_buffer->data)[j] = src[i];
         }
         j += 4 * escape_char + 1 * !escape_char;
     }
 
-    escaped_buffer[j] = '\0'; // Ensure null-termination
+    ((char *)escaped_buffer->data)[j] = '\0'; // Ensure null-termination
+
+    escaped_buffer->len = escaped_length + 1;
 
     // Release the mutex lock
     pthread_mutex_unlock(&mutex);
