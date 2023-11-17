@@ -23,6 +23,7 @@ SRCS = \
 	thread_pool.c \
 	filemap.c \
 	network.c \
+	ssignore.c \
 
 OBJS = $(SRCS:.c=.o)
 

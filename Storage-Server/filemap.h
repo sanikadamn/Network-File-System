@@ -14,6 +14,7 @@
 #include <semaphore.h>
 
 #include "../common/buffer.h"
+#include "ssignore.h"
 
 /*
 ** Stores file metadata.
@@ -64,12 +65,6 @@ void delete_file_map (struct files* file_maps, str_t remote_filename);
 void free_file_maps (struct files* file_maps);
 
 /*
- * Checks if file is accessible by the storage server.
- * Uses regex patterns stored in .ssignore (not yet, waiting for TA approval)
- */
-int is_accessible(char* filename);
-
-/*
  * Fills file_data with all the files that are accesible by the ss_info.
  *
  */
@@ -78,7 +73,7 @@ void get_files (buf_t* file_data, char* path);
 /*
 ** Prepare file maps into a packet that can be sent over to the naming server
 */
-buf_t* prepare_filemap_packet (const struct files file_maps);
+buf_t* prepare_filemap_packet (const struct files file_map);
 
 struct files* init_ss_filemaps(char* path);
 #endif
