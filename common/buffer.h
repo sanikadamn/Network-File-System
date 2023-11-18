@@ -10,6 +10,9 @@ struct buffer {
     void*  data;
 };
 
+// Casts void data into the required type so that pointer arithmetic etc occurs naturally
+#define CAST(T, X) ((T*)(X))
+
 typedef struct buffer buf_t;
 typedef struct buffer str_t;
 
