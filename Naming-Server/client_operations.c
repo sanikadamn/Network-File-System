@@ -21,7 +21,8 @@ void *connectClientToNS(void *arg)
         client->server_socket = connfd;
         client->server_addr = client_addr;
         pthread_t client_requests;
-        pthread_create(&client_requests, NULL, clientRequests, (void *)client);
+        tpool_work(thread_pool, clientRequests, (void *)client);
+        // pthread_create(&client_requests, NULL, clientRequests, (void *)client);
     }
 }
 
@@ -174,10 +175,28 @@ int read_fromfile(Request *req, Server *client)
     return 0;
 }
 
-int delete_file()
+int delete_file(Request *req, Server *client)
 {
     // for deleting, check what servers the files are in and send delete commands to all of them
-    
+    // find all instances of the file in the file array, set the bit to 1, and send delete commands to all the ss
+    // if the file is not found, send error to the client
+    pthread_mutex_lock(&file_lock);
+    for (int i = 0; i< filecount; i++)
+    {
+        Command *cmd = (Command *)malloc(sizeof(Command));
+        cmd->type = DELETE;
+        strcpy(cmd->path, req->path);
+        if (strcmp(files[i].path, req->path) == 0)
+        {
+            files[i].deleted = 1;
+            // send delete command to the storage server
+            int err = send(files[i].storageserver_socket, cmd, sizeof(Command), 0);
+            if (err < 0)
+                perror("send");
+        }
+    }
+    pthread_mutex_unlock(&file_lock);
+    return 0;
 }
 
 int create_file()
