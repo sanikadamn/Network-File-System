@@ -18,6 +18,7 @@ void *getFileInfo(void *arg)
     {
         if (file_paths[i] == NULL)
             break;
+        file_paths[i]->deleted = 0;
         files[filecount] = *file_paths[i];
         filecount++;
     }
@@ -48,6 +49,7 @@ void *connectStorageServer(void *arg)
         storage->server_socket = connfd;
         storage->server_addr = storage_server;
         pthread_t get_file_info;
-        pthread_create(&get_file_info, NULL, getFileInfo, (void *)storage);
+        tpool_work(thread_pool, getFileInfo, (void *)storage);
+        // pthread_create(&get_file_info, NULL, getFileInfo, (void *)storage);
     }
 }

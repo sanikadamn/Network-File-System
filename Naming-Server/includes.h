@@ -8,7 +8,11 @@
 #include <arpa/inet.h>
 
 #define DEFAULT_NS_PORT 3112
+#ifndef NUM_THREADS
+#define NUM_THREADS 50
+#endif
 
 #include "connect_storage_server.h"
 #include "client_operations.h"
 #include "../error_codes.h"
+#include "../common/Structures.h"

@@ -8,6 +8,7 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <netinet/in.h>
+#include "../common/thread_pool.h"
 
 void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
@@ -18,6 +19,7 @@ typedef struct file_info{
     int storageserver_socket;
     int write_perm; // 0 for no, 1 for yes
     int read_perm;  // 0 for no, 1 for yes
+    int deleted;
 } File;
 
 extern pthread_mutex_t file_lock;
@@ -30,6 +32,11 @@ typedef struct serv{
     struct sockaddr_in server_addr;
 } Server;
 
+// make the threadpool thing 
+extern tpool_t* thread_pool;
+
 extern Server *NS;
+
+
 
 #endif

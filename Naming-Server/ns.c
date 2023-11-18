@@ -1,6 +1,7 @@
 #include "includes.h"
 
 Server *NS;
+tpool_t* thread_pool;
 
 int main()
 {
@@ -39,6 +40,9 @@ int main()
     }
     else
         printf("Listening on port %d.\n", DEFAULT_NS_PORT);
+
+    // create thread pool
+    thread_pool = tpool_create(NUM_THREADS);
 
     // connect to storage server
     NS = (Server *)malloc(sizeof(Server));
