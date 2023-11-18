@@ -13,7 +13,7 @@ struct buffer {
 typedef struct buffer buf_t;
 typedef struct buffer str_t;
 
-int buf_malloc (struct buffer *buffer, size_t elsize, size_t capacity);
+int buf_malloc (struct buffer *buffer, size_t el_size, size_t capacity);
 
 int buf_resize (struct buffer* buffer, size_t new_capacity);
 
