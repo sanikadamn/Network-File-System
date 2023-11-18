@@ -21,4 +21,8 @@
 #define DEFAULT_CLIENT_PORT "2109"
 #endif
 
+#ifndef DEFAULT_SSIGNORE_PATH
+#define DEFAULT_SSIGNORE_PATH ".ssignore"
+#endif
+
 #endif // CONSTANTS_H_

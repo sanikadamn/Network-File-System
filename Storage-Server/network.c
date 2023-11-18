@@ -12,6 +12,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "concurrency.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
@@ -115,12 +116,17 @@ int init_connection(char* ip, char* port, int server) {
 
 void send_heartbeat(void* arg) {
 	int ns_socket = (int)arg;
-	while (1) {
-		sem_wait(&ss_files->data_queue);
-		sem_wait(&ss_files->data_read_lock);
+	ss_files->changed = 1;
+	buf_malloc(&ss_files->packet, sizeof(char), 1);
 
-		buf_t* packet = prepare_filemap_packet(*ss_files);
-		size_t err = send(ns_socket, "Hello world", 5, 0);
+	while (1) {
+		READER_ENTER(ss_files);
+
+		if (ss_files->changed) {
+			ss_files->changed = 0;
+			prepare_filemap_packet(*ss_files, &ss_files->packet);
+		}
+		size_t err = send(ns_socket, (char*)ss_files->packet.data, ss_files->packet.len, 0);
 
 		if (err == -1) {
 			perror("ns send");
@@ -138,16 +144,12 @@ void send_heartbeat(void* arg) {
 		} else if (err == 0) {
 			printf("client closed connection\n");
 			perror("recv");
-			buf_free(packet);
-			sem_post(&ss_files->data_read_lock);
-			sem_post(&ss_files->data_queue);
+			READER_EXIT(ss_files);
 			return;
 		}
 
 	release:
-		buf_free(packet);
-		sem_post(&ss_files->data_read_lock);
-		sem_post(&ss_files->data_queue);
+		READER_EXIT(ss_files);
 		sleep(1); // NOLINT(concurrency-mt-unsafe)
 	}
 	return;

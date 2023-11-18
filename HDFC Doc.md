@@ -1,6 +1,59 @@
 # HDFS Project Document
 
-# Abbreviations
+## Protocol
+Important: Once a file has been opened, it will close within 1 minute of no activity.
+
+### OPEN packet
+```
+OPEN
+FILENAME: serialized filename
+READ: YES | NO
+WRITE: YES | NO
+```
+
+### ACK packet
+```
+ACK
+FD: uniquely identifying data
+STATUS: status of info
+```
+
+### READ packet
+
+```
+READ
+FD: unique id to be provided
+STARTPOS: CURR | BEGIN | END
+STARTOFFSET: int64 number
+ENDOFFSET: int64 number
+```
+
+### WRITE packet
+Important: the data to be written should be have atmost NUMBYTES.
+
+```
+WRITE
+FD: unique id to be provided
+STARTPOS: CURR | BEGIN | END
+STARTOFFSET: int64 number
+NUMBYTES: int64 number
+data to be written (not serialized)
+```
+
+### COPYFROM packet
+```
+COPYFROM
+FILENAME: serialized filename
+```
+
+### COPYTO packet
+```
+COPYTO
+FILENAME: serialized filename
+data to be written (not serialized)
+```
+
+## Abbreviations
 - Client: C
 - Name Server: NS
 - Storage Server: SS
