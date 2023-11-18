@@ -83,3 +83,10 @@ int is_accessible(char* filename) {
 	}
 	return 1;
 };
+
+void free_regexs() {
+	for (regex_t* r = &((regex_t*)regexs.data)[0];
+	     r < &((regex_t*)regexs.data)[regexs.len]; r++) {
+		free(r);
+	}
+}
