@@ -1,6 +1,7 @@
 #include <dirent.h>
 #include <errno.h>
 #include <semaphore.h>
+#include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -58,9 +59,11 @@ void get_files(buf_t* f, char* path) {
 			buf_malloc(&file->local_filename, sizeof(char),
 			           filename_len + 1);
 			strncpy((char*)(file->local_filename.data), ent->d_name,
-			        filename_len);
+			        filename_len + 1);
 			file->local_filename.len = filename_len;
 			file->file_size = st.st_size;
+
+			retrieve_remote_filename(&file->remote_filename, &file->local_filename);
 		} else {
 			fprintf(stderr, "Ignoring as not accessible\n");
 			f->len--;
@@ -68,6 +71,45 @@ void get_files(buf_t* f, char* path) {
 	}
 }
 // NOLINTEND(concurrency-*)
+
+void retrieve_remote_filename(str_t* remote_filename, const str_t* local_filename) {
+	buf_malloc(remote_filename, sizeof(char), local_filename->len / 2 + 2);
+
+	char* dst = CAST(char, remote_filename->data);
+	char* src = CAST(char, local_filename->data);
+
+	static const char LOOKUP [128] = {
+    ['0'] = 0x0, ['1'] = 0x1, ['2'] = 0x2, ['3'] = 0x3,
+    ['4'] = 0x4, ['5'] = 0x5, ['6'] = 0x6, ['7'] = 0x7,
+    ['8'] = 0x8, ['9'] = 0x9, ['A'] = 0xA, ['B'] = 0xB,
+    ['C'] = 0xC, ['D'] = 0xD, ['E'] = 0xE, ['F'] = 0xF,
+};
+
+	for(size_t i=0; i < local_filename->len; i+=2)  {
+		*dst = (char)((LOOKUP[src[i]] & 0xF) << 4);
+		if ((i + 1) < local_filename->len)
+			*dst = (char)(*dst | LOOKUP[src[i+1]]);
+		dst++;
+		remote_filename->len++;
+	}
+	*dst = '\0';
+}
+
+void retrieve_local_filename(str_t *local_filename, const str_t *remote_filename) {
+	buf_malloc(local_filename, sizeof(char), local_filename->len * 2 + 1);
+
+	char* src = CAST(char, remote_filename->data);
+	char* dst = CAST(char, local_filename->data);
+
+	static const char HEX_LOOKUP[] = "0123456789ABCDEF";
+
+	for (size_t i = 0; i < remote_filename->len; ++i) {
+        *dst++ = HEX_LOOKUP[(src[i] >> 4) & 0xF];
+        *dst++ = HEX_LOOKUP[src[i] & 0xF];
+		local_filename->len += 2;
+    }
+	*dst = '\0';
+}
 
 struct files* init_ss_filemaps(char* path) {
 	char* ssignore_path =
@@ -88,9 +130,4 @@ struct files* init_ss_filemaps(char* path) {
 	get_files(&f->files, path);
 
 	return f;
-}
-
-void prepare_filemap_packet(const struct files file_map, struct buffer* buf) {
-	buf_free(buf);
-	buf_malloc(buf, 1, 0);
 }

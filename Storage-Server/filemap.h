@@ -47,15 +47,15 @@ struct files {
 
 /*
 ** The local file name is unique. The goal is to be easy to search and sort.
-** Right now, however, we have a simple base64 translation. Since we only deal with
-** base64 pathnames, we can also use unicode. This also helps to deal with uniqueness
+** Right now, however, we have a simple hex translation. Since we only deal with
+** hex pathnames, we can also use unicode. This also helps to deal with uniqueness
 **
 ** Why not store the entire tree? On a networked file system, files in the same folder
 ** may exist on different drives. Recreating the folders would end up becoming impossibly
 ** hard for deeply nested folders. Instead, the folders are recreated on NameNodes.
 */
-str_t* retrieve_local_filename (str_t remote_filename);
-str_t* retrieve_remote_filename (str_t local_filename);
+void retrieve_local_filename  (str_t* local_filename, const str_t* remote_filename);
+void retrieve_remote_filename (str_t* remote_filename, const str_t* local_filename);
 
 
 /*
@@ -74,11 +74,6 @@ void free_file_maps (struct files* file_maps);
  *
  */
 void get_files (buf_t* file_data, char* path);
-
-/*
-** Prepare file maps into a packet that can be sent over to the naming server
-*/
-void prepare_filemap_packet (const struct files file_map, buf_t* buffer);
 
 struct files* init_ss_filemaps(char* path);
 #endif
