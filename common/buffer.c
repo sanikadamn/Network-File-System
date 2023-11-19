@@ -9,7 +9,7 @@ int buf_malloc(struct buffer* b, size_t el_size, size_t len) {
 		b->el_size = el_size;
 		b->capacity = len;
 		b->len = 0;
-		b->data = malloc(el_size * len);
+		b->data = calloc(len, el_size);
 		return -(b->data != NULL); // if malloc returned NULL, it
 		                           // required checking error code.
 	}
