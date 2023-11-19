@@ -32,7 +32,6 @@ void* get_in_addr(struct sockaddr* sa) {
 
 void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	READER_ENTER(&file_map);
-	buf_free(buf);
 	buf_t lines;
 
 	// The 4 extra lines are for headers:
@@ -50,9 +49,13 @@ void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	add_int_header(&CAST(str_t, lines.data)[3], "NUMFILES:", file_map.files.len);
 
 	for (size_t i = 0; i < file_map.files.len; i++) {
+		printf("Adding file: %s", CAST(char, CAST(struct file_metadata, file_map.files.data)[i].remote_filename.data));
 		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4], "FILENAME:", CAST(struct file_metadata, file_map.files.data)[i].remote_filename);
+		add_i64_header(&CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:", CAST(struct file_metadata, file_map.files.data)[i].file_size);
 	}
 
+	lines.len = 2 * file_map.files.len + 4;
+	coalsce_buffers(buf, &lines);
 	READER_EXIT(&file_map);
 }
 
@@ -135,10 +138,6 @@ int init_connection(char* ip, char* port, int server) {
 
 	fprintf(stderr, "Connected, sockfd = %d!\n", sockfd);
 
-	if (!server) {
-		if (send(sockfd, "Hello world", 10, 0) == -1)
-			perror("test send");
-	}
 	return sockfd;
 }
 
@@ -147,8 +146,12 @@ void send_heartbeat(void* arg) {
 	ss_files->changed = 1;
 	buf_malloc(&ss_files->packet, sizeof(char), 1);
 
+	printf("IMPORTANT: starting heartbeat sending\n");
+
 	while (1) {
 		READER_ENTER(ss_files);
+
+		printf("sending heartbeat\n");
 
 		if (ss_files->changed) {
 			ss_files->changed = 0;
@@ -159,14 +162,11 @@ void send_heartbeat(void* arg) {
 		if (err == -1) {
 			perror("ns send");
 			goto release;
-		} else if (err == 0) {
-			perror("connection closed");
-			goto release;
 		}
 
 		char buffer[512];
-		err = recv(ns_socket, buffer, sizeof(buffer), 0);
-		if (err == -1) {
+		err = recv(ns_socket, buffer, sizeof(buffer), MSG_DONTWAIT);
+		if (err == -1 && errno != EWOULDBLOCK) {
 			perror("recv");
 			goto release;
 		} else if (err == 0) {
