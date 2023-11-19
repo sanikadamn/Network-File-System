@@ -14,3 +14,9 @@ typedef struct com{
     int type;
     char path[1024];
 } Command;
+
+// struct to send responses from ns to client
+typedef struct nstoclient{
+    int type;
+    char path[1000][1024];
+} NSToClient;

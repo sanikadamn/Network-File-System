@@ -2,6 +2,7 @@
 
 pthread_mutex_t file_lock = PTHREAD_MUTEX_INITIALIZER;
 File files[10000];
+
 filecount = 0;
 
 void *getFileInfo(void *arg)

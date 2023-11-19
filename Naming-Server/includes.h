@@ -16,3 +16,4 @@
 #include "client_operations.h"
 #include "../error_codes.h"
 #include "../common/Structures.h"
+#include "../common/buffer.h"

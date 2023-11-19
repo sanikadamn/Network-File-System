@@ -6,7 +6,7 @@ tpool_t* thread_pool;
 int main()
 {
     // start the naming server
-    int server_socket, confd;
+    int server_socket;
     struct sockaddr_in server_addr;
 
     server_socket = socket(AF_INET, SOCK_STREAM, 0);
@@ -51,13 +51,19 @@ int main()
     
     
     // make a thread that listens for connections from clients
-    pthread_t connect_servers;
-    pthread_create(&connect_servers, NULL, connectStorageServer, NULL);
+
+    // pthread_t connect_servers;
+    tpool_work(thread_pool, (void (*)(void *))connectStorageServer, NULL);
+    // pthread_create(&connect_servers, NULL, connectStorageServer, NULL);
 
     // use thread pool?
 
     // get client connections
-    pthread_t connect_clients;
-    pthread_create(&connect_clients, NULL, connectClientToNS, NULL);
+    // pthread_t connect_clients;
+    tpool_work(thread_pool, (void (*)(void *))connectClientToNS, NULL);
+    // pthread_create(&connect_clients, NULL, connectClientToNS, NULL);
+
+    // wait for threads to finish
+    tpool_wait(thread_pool);
 }
 
