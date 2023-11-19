@@ -2,11 +2,11 @@
 #include <string.h>
 #include <unistd.h>
 
+#include "../common/thread_pool.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
 #include "ssignore.h"
-#include "../common/thread_pool.h"
 
 struct files* ss_files;
 
