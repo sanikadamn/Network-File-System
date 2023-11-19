@@ -24,13 +24,17 @@
 
 
 void add_str_header (str_t* buffer, const char* hname, const char* hvalue) {
-	buf_malloc(buffer, sizeof(char), strlen(hname) + strlen(hname));
+    int len = strlen(hname) + strlen(hvalue) + 2;  // 1 for NULL, 1 for \n
+	buf_malloc(buffer, sizeof(char), len);
 	sprintf(CAST(char, buffer->data), "%s%s\n", hname, hvalue);
+    buffer->len = len - 1;
 }
 
 void add_buf_header (str_t* buffer, const char* hname, const buf_t hvalue) {
-	buf_malloc(buffer, sizeof(char), strlen(hname) + hvalue.len);
+    int len = strlen(hname) + hvalue.len + 2; // 1 for NULL, 1 for \n
+	buf_malloc(buffer, sizeof(char), len);
 	sprintf(CAST(char, buffer->data), "%s%s\n", hname, CAST(char, hvalue.data));
+    buffer->len = len;
 }
 
 void add_int_header (str_t* buffer, const char* hname, const size_t hvalue) {
@@ -49,14 +53,14 @@ void coalsce_buffers (buf_t* dest, buf_t* src_bufs) {
     size_t total_len = 0;
     size_t num_buffers = src_bufs->len;
     for (int i = 0; i < num_buffers; i++) {
-        total_len += CAST(str_t, src_bufs)[i].len;
+        total_len += CAST(str_t, src_bufs->data)[i].len;
     }
 
     buf_malloc(dest, sizeof(char), total_len + 1);
     char* data = CAST(char, dest->data);
     for (int i = 0; i < num_buffers; i++) {
-        strcat(data, CAST(str_t, src_bufs)[i].data);
-        data += CAST(str_t, src_bufs)[i].len;
+        strncat(data, CAST(char, CAST(str_t, src_bufs->data)[i].data), CAST(str_t, src_bufs->data)[i].len);
+        dest->len += CAST(str_t, src_bufs->data)[i].len;
     }
 }
 
