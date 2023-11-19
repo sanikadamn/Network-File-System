@@ -2,7 +2,7 @@
 #define NETWORK
 
 #include "filemap.h"
-#include "thread_pool.h"
+#include "../common/thread_pool.h"
 
 extern struct files* ss_files;
 

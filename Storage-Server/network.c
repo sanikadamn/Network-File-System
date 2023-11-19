@@ -12,11 +12,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "concurrency.h"
+#include "../common/concurrency.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
-#include "thread_pool.h"
+#include "../common/thread_pool.h"
+#include "../common/packets.h"
 
 typedef uint32_t u32;
 

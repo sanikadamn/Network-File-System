@@ -20,7 +20,7 @@ DEPS = $(wildcard *.h)
 SRCS = \
 	ss.c \
 	../common/buffer.c \
-	thread_pool.c \
+	../common/thread_pool.c \
 	filemap.c \
 	network.c \
 	ssignore.c \
