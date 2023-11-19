@@ -70,7 +70,6 @@ int is_accessible(char* filename) {
 	for (regex_t* r = &((regex_t*)regexs.data)[0];
 	     r < &((regex_t*)regexs.data)[regexs.len]; r++) {
 		int match = regexec(r, filename, 0, NULL, 0);
-		printf("searching for match\n");
 		switch (match) {
 		case 0:
 			return 0;
