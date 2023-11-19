@@ -15,4 +15,10 @@ void compile_regexs (char* file);
  */
 int is_accessible(char* filename);
 
+
+/**
+ * Frees all regexes present
+ * */
+void free_regexs ();
+
 #endif // SSIGNORE

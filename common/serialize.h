@@ -1,5 +1,5 @@
-#ifndef SERIALISE
-#define SERIALISE
+#ifndef __SERIALIZE_H_
+#define __SERIALIZE_H_
 
 #include <stddef.h>
 
@@ -18,4 +18,4 @@ str_t* serialize_string(const char* src);
 
 char* deserialize_string(const char* buffer);
 
-#endif // SERIALISE
+#endif // __SERIALIZE_H_

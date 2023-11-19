@@ -172,3 +172,11 @@ Contain
     - `SIZE`
     - `PERMS`
 - `PATH` -- the file/directory path
+
+## "Common"
+
+#### buffer
+Defines buf_t/str_t and the corresponding malloc, resize, and free functions.
+
+#### serialize
+Exposes the serialize and deserialize functions. These convert unprintable characters to their corresponding hex codes and vice versa.

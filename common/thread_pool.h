@@ -1,5 +1,5 @@
-#ifndef THREAD_POOL
-#define THREAD_POOL
+#ifndef __THREAD_POOL_H_
+#define __THREAD_POOL_H_
 
 // Borrows from https://nachtimwald.com/2019/04/12/thread-pool-in-c/
 // Sets up a threadpool

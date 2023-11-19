@@ -1,12 +1,16 @@
 #include <stdio.h>
+#include <string.h>
 #include <unistd.h>
 
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
-#include "thread_pool.h"
+#include "ssignore.h"
+#include "../common/thread_pool.h"
 
 struct files* ss_files;
+
+struct network net_details;
 
 int usage(int argc, char* argv[]) {
 	fprintf(stderr, "invalid usage!\n");
@@ -28,15 +32,16 @@ int check_access(char* path) {
 	return 0;
 }
 
-void init_server(char* root, char* ns_ip, char* ns_port) {
+void init_server(char* root) {
 	ss_files = init_ss_filemaps(root);
 
 	// Handle heartbeat
-	int ns = init_connection(LOCALHOST, DEFAULT_NS_PORT, 0);
+	int ns = init_connection(net_details.ns_ip, net_details.ns_port, 0);
 	if (ns == -1)
 		return;
 
-	int client_socket = init_connection(LOCALHOST, DEFAULT_CLIENT_PORT, 1);
+	int client_socket =
+	    init_connection(net_details.ss_ip, net_details.client_port, 1);
 	if (client_socket == -1)
 		return;
 
@@ -50,6 +55,7 @@ void init_server(char* root, char* ns_ip, char* ns_port) {
 	tpool_wait(thread_pool);
 	printf("No more connections left. Closing the server\n");
 	tpool_destroy(thread_pool);
+	free_regexs();
 }
 
 int main(int argc, char* argv[]) {
@@ -61,11 +67,16 @@ int main(int argc, char* argv[]) {
 	char* ns_ip = argv[2];
 	char* ns_port = argv[3];
 
+	strcpy(net_details.ss_ip, LOCALHOST);
+	strcpy(net_details.ns_ip, ns_ip);
+	strcpy(net_details.client_port, DEFAULT_CLIENT_PORT);
+	strcpy(net_details.ns_port, ns_port);
+
 	if (check_access(root_path)) {
 		return 1;
 	}
 
 	fprintf(stderr, "Starting storage server!\n");
 
-	init_server(root_path, ns_ip, ns_port);
+	init_server(root_path);
 }

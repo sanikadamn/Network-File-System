@@ -4,6 +4,7 @@
 #include <netinet/in.h>
 #include <pthread.h>
 #include <semaphore.h>
+#include <string.h>
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
@@ -12,11 +13,12 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#include "concurrency.h"
+#include "../common/concurrency.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
-#include "thread_pool.h"
+#include "../common/thread_pool.h"
+#include "../common/packets.h"
 
 typedef uint32_t u32;
 
@@ -26,6 +28,32 @@ void* get_in_addr(struct sockaddr* sa) {
 	}
 
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
+}
+
+void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
+	READER_ENTER(&file_map);
+	buf_free(buf);
+	buf_t lines;
+
+	// The 4 extra lines are for headers:
+	// - IP address
+	// - NS Port
+	// - Client Port
+	// - Number of files
+	// Each file is then listed, with the serialised filename and size each taking up a line
+	buf_malloc(&lines, sizeof(str_t), 2 * file_map.files.len + 4); // See packet format for magic numbers
+
+	// Allocate headers
+	add_str_header(&CAST(str_t, lines.data)[0], "IP:", net_details.ss_ip);
+	add_str_header(&CAST(str_t, lines.data)[1], "NPORT:", net_details.ns_port);
+	add_str_header(&CAST(str_t, lines.data)[2], "CPORT:", net_details.client_port);
+	add_int_header(&CAST(str_t, lines.data)[3], "NUMFILES:", file_map.files.len);
+
+	for (size_t i = 0; i < file_map.files.len; i++) {
+		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4], "FILENAME:", CAST(struct file_metadata, file_map.files.data)[i].remote_filename);
+	}
+
+	READER_EXIT(&file_map);
 }
 
 int init_connection(char* ip, char* port, int server) {
@@ -163,6 +191,7 @@ void respond(void* arg) {
 	size_t err;
 	char buffer[1024];
 	while ((err = recv(new_fd, buffer, sizeof(buffer), 0))) {
+
 		if (err == -1) {
 			perror("responding to client :(");
 			continue;
