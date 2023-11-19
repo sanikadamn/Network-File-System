@@ -25,7 +25,7 @@
 #define READER_EXIT(x) do {                     \
         sem_wait(&((x)->read_lock));            \
         ((x)->readcount)--;                     \
-        if ((x)->readcount)                     \
+        if ((x)->readcount == 0)                \
             sem_post(&((x)->lock));             \
         sem_post(&((x)->read_lock));            \
     } while (0);
