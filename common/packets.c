@@ -2,10 +2,6 @@
 #include "buffer.h"
 #include <string.h>
 
-typedef int32_t i32;
-typedef int64_t i64;
-
-
 /**
  *  OP:READ
  *  FILENAME:filename
@@ -111,7 +107,6 @@ i64 read_i64 (int fd, char* hname) {
     sscanf(hval_str, "%ld", &result);
     return result;
 }
-
 
 buf_t* read_str (int fd, const char* hname) {
     size_t hname_len = strlen(hname);
