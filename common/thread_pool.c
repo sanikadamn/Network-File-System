@@ -101,8 +101,7 @@ void tpool_worker(void* arg) {
 
 	// No longer in the thread pool
 	thread_pool->thread_cnt--;
-	if (!thread_pool->thread_cnt)
-		pthread_cond_signal(&(thread_pool->work_cond));
+	pthread_cond_signal(&(thread_pool->work_cond));
 	pthread_mutex_unlock(&(thread_pool->work_mutex));
 	return;
 }
@@ -190,8 +189,8 @@ void tpool_destroy(tpool_t* tp) {
 	}
 
 	tp->stop = 1;
-	pthread_cond_wait(&(tp->work_cond), &(tp->work_mutex));
-	pthread_mutex_lock(&(tp->work_mutex));
+	pthread_cond_broadcast(&(tp->work_cond));
+	pthread_mutex_unlock(&(tp->work_mutex));
 
 	tpool_wait(tp);
 
