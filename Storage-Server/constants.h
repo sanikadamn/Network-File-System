@@ -25,4 +25,8 @@
 #define DEFAULT_SSIGNORE_PATH ".ssignore"
 #endif
 
+#ifndef BUFSIZE
+#define BUFSIZE 512
+#endif
+
 #endif // CONSTANTS_H_
