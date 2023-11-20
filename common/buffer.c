@@ -11,6 +11,7 @@ int buf_malloc(struct buffer* b, size_t el_size, size_t len) {
 		b->capacity = len;
 		b->len = 0;
 		b->data = calloc(len, el_size);
+		if (b->data == NULL) b->capacity = 0;
 		return -(b->data != NULL); // if malloc returned NULL, it
 		                           // required checking error code.
 	}
