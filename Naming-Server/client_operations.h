@@ -28,5 +28,9 @@ int find_file(char path[]);
 int write_tofile(Request *req, Server *client);
 int read_fromfile(Request *req, Server *client);
 int delete_file(Request *req, Server *client);
+int create_file(Request *req, Server *client);
+int moreinfo_file(Request *req, Server *client);
+int list_file(Request *req, Server *client);
+int read_write(Request *req, Server *client, int read);
 
 #endif
