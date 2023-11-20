@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 
 #include "buffer.h"
 
@@ -26,6 +27,15 @@ int buf_resize(struct buffer* b, size_t cap) {
 		b->capacity = cap;
 	}
 	return 0;
+}
+
+void buf_copy (struct buffer* restrict dest, struct buffer* restrict src) {
+	if (dest == NULL || src == NULL)
+		return;
+
+	buf_malloc(dest, src->el_size, src->capacity);
+	dest->len = src->len;
+	memcpy(dest->data, src->data, src->len * src->el_size);
 }
 
 void buf_free(struct buffer* b) {

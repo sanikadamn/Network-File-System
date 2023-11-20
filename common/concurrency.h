@@ -32,8 +32,8 @@
 
 #define WRITER_ENTER(x) do {                    \
         sem_wait(&((x)->queue));                \
-        sem_wait(&((x)->resource));             \
-        sem_wait(&((x)->queue));                \
+        sem_wait(&((x)->lock));                 \
+        sem_post(&((x)->queue));                \
     } while (0);
 
 #define WRITER_EXIT(x) do {                     \

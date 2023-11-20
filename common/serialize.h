@@ -16,6 +16,8 @@
  * */
 str_t* serialize_string(const char* src);
 
+str_t* serialize_buffer(buf_t src);
+
 char* deserialize_string(const char* buffer);
 
 #endif // __SERIALIZE_H_

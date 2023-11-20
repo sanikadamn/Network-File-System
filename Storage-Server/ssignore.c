@@ -67,8 +67,8 @@ early_exit:
 }
 
 int is_accessible(char* filename) {
-	for (regex_t* r = &((regex_t*)regexs.data)[0];
-	     r < &((regex_t*)regexs.data)[regexs.len]; r++) {
+	for (regex_t* r = &CAST(regex_t, regexs.data)[0];
+	     r < &CAST(regex_t, regexs.data)[regexs.len]; r++) {
 		int match = regexec(r, filename, 0, NULL, 0);
 		switch (match) {
 		case 0:
@@ -84,8 +84,9 @@ int is_accessible(char* filename) {
 };
 
 void free_regexs() {
-	for (regex_t* r = &((regex_t*)regexs.data)[0];
-	     r < &((regex_t*)regexs.data)[regexs.len]; r++) {
+	for (regex_t* r = &CAST(regex_t, regexs.data)[0];
+	     r < &CAST(regex_t, regexs.data)[regexs.len]; r++) {
 		free(r);
 	}
+	buf_free(&regexs);
 }

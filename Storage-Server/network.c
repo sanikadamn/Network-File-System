@@ -14,11 +14,12 @@
 #include <stdlib.h>
 
 #include "../common/concurrency.h"
+#include "../common/packets.h"
+#include "../common/serialize.h"
+#include "../common/thread_pool.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
-#include "../common/thread_pool.h"
-#include "../common/packets.h"
 
 typedef uint32_t u32;
 
@@ -39,19 +40,32 @@ void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	// - NS Port
 	// - Client Port
 	// - Number of files
-	// Each file is then listed, with the serialised filename and size each taking up a line
-	buf_malloc(&lines, sizeof(str_t), 2 * file_map.files.len + 4); // See packet format for magic numbers
+	// Each file is then listed, with the serialised filename and size each
+	// taking up a line
+	buf_malloc(&lines, sizeof(str_t),
+	           2 * file_map.files.len +
+	               4); // See packet format for magic numbers
 
 	// Allocate headers
 	add_str_header(&CAST(str_t, lines.data)[0], "IP:", net_details.ss_ip);
-	add_str_header(&CAST(str_t, lines.data)[1], "NPORT:", net_details.ns_port);
-	add_str_header(&CAST(str_t, lines.data)[2], "CPORT:", net_details.client_port);
-	add_int_header(&CAST(str_t, lines.data)[3], "NUMFILES:", file_map.files.len);
+	add_str_header(&CAST(str_t, lines.data)[1],
+	               "NPORT:", net_details.ns_port);
+	add_str_header(&CAST(str_t, lines.data)[2],
+	               "CPORT:", net_details.client_port);
+	add_int_header(&CAST(str_t, lines.data)[3],
+	               "NUMFILES:", file_map.files.len);
 
 	for (size_t i = 0; i < file_map.files.len; i++) {
-		printf("Adding file: %s", CAST(char, CAST(struct file_metadata, file_map.files.data)[i].remote_filename.data));
-		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4], "FILENAME:", CAST(struct file_metadata, file_map.files.data)[i].remote_filename);
-		add_i64_header(&CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:", CAST(struct file_metadata, file_map.files.data)[i].file_size);
+		buf_t* buffer = serialize_buffer(
+		    CAST(struct file_metadata, file_map.files.data)[i]
+		        .remote_filename);
+		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4],
+		               "FILENAME:", *buffer);
+		buf_free(buffer);
+		add_i64_header(
+		    &CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:",
+		    CAST(struct file_metadata, file_map.files.data)[i]
+		        .file_size);
 	}
 
 	lines.len = 2 * file_map.files.len + 4;
@@ -157,7 +171,8 @@ void send_heartbeat(void* arg) {
 			ss_files->changed = 0;
 			prepare_filemap_packet(*ss_files, &ss_files->packet);
 		}
-		size_t err = send(ns_socket, (char*)ss_files->packet.data, ss_files->packet.len, 0);
+		size_t err = send(ns_socket, (char*)ss_files->packet.data,
+		                  ss_files->packet.len, 0);
 
 		if (err == -1) {
 			perror("ns send");

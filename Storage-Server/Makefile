@@ -22,6 +22,7 @@ SRCS = \
 	../common/buffer.c \
 	../common/thread_pool.c \
 	../common/packets.c \
+	../common/serialize.c \
 	filemap.c \
 	network.c \
 	ssignore.c \

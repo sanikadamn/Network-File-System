@@ -94,14 +94,15 @@ void tpool_worker(void* arg) {
 		if (!thread_pool->stop &&
 		    thread_pool->working_thread_cnt == 0 &&
 		    thread_pool->head == NULL) {
-			pthread_cond_signal(&(thread_pool->work_cond));
+			pthread_cond_signal(&(thread_pool->working_cond));
 		}
 		pthread_mutex_unlock(&(thread_pool->work_mutex));
 	}
 
 	// No longer in the thread pool
 	thread_pool->thread_cnt--;
-	pthread_cond_signal(&(thread_pool->work_cond));
+	if (thread_pool->thread_cnt == 0)
+		pthread_cond_signal(&(thread_pool->working_cond));
 	pthread_mutex_unlock(&(thread_pool->work_mutex));
 	return;
 }

@@ -26,6 +26,7 @@ struct file_metadata {
     str_t remote_filename;
     str_t local_filename;
     size_t file_size;
+    int deleted;
 
     sem_t lock;
     sem_t read_lock;
