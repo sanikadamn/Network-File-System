@@ -9,9 +9,14 @@ FILENAME:
 
 /**
 STATUS:
+FILESIZE:
+PERMISSIONS:
+FILENAME:
 IP:
 CPORT:
 **/
+// sending stuff back to client
+
 
 // connect the clients to the naming server
 void *connectClientToNS(void *arg)
@@ -125,6 +130,12 @@ int read_write(Request *req, Server *client, int read)
         // send error to the client
         pthread_mutex_unlock(&file_lock);
         add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOSERV");
+        add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+        add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+        add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
+        add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+        add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
+
         coalsce_buffers(&buf, &packet);
         int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
@@ -136,6 +147,11 @@ int read_write(Request *req, Server *client, int read)
         // send error to the client
         pthread_mutex_unlock(&file_lock);
         add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOTFOUND");
+        add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+        add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+        add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
+        add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+        add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
         coalsce_buffers(&buf, &packet);
         int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
@@ -147,6 +163,11 @@ int read_write(Request *req, Server *client, int read)
         // send error to the client
         pthread_mutex_unlock(&file_lock);
         add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOPERM");
+        add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+        add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+        add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
+        add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+        add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
         coalsce_buffers(&buf, &packet);
         int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
@@ -155,8 +176,11 @@ int read_write(Request *req, Server *client, int read)
     }
     // if the file exists and the user has permissions, send the data to the client
     add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "NO_ERROR");
-    add_str_header(&CAST(str_t, packet.data)[1], "IP:", files[index]->ss_ip);
-    add_str_header(&CAST(str_t, packet.data)[2], "CPORT:", files[index]->client_port);
+    add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+    add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+    add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
+    add_str_header(&CAST(str_t, packet.data)[4], "IP:", files[index]->ss_ip);
+    add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", files[index]->client_port);
     coalsce_buffers(&buf, &packet);
     int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
     if (err < 0)
@@ -191,8 +215,12 @@ int delete_file(Request *req, Server *client)
             struct buffer buf;
             buf_malloc(&buf, sizeof(str_t), 2048);
             buf_malloc(&packet, sizeof(str_t), 2048);
-            add_str_header(&CAST(str_t, packet.data)[0], "REQUEST:", "DELETE");
-            add_str_header(&CAST(str_t, packet.data)[1], "FILENAME:", req->path);
+            add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "DELETE");
+            add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+            add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+            add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", req->path);
+            add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+            add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
             coalsce_buffers(&buf, &packet);
             files[i]->deleted = 1;
             // send delete command to the storage server
@@ -215,12 +243,84 @@ int list_file(Request *req, Server *client)
     pthread_mutex_lock(&file_lock);
     // the client sends the base path thing that they want, need to check which other strings that is a substring of 
     // and send the list of those files to the client
-    
+    File *uniquefiles[10000];
+    int unique = 0;
+    for (int i = 0; i < filecount; i ++)
+    {
+        if(strncmp(files[i]->filename, req->path, strlen(req->path) == 0))
+        {
+            int isunique = 0;
+            for(int j = 0;j<unique; j++)
+            {
+                if(strcmp(uniquefiles[j]->filename, files[i]->filename) == 0)
+                {
+                    isunique = 1;
+                    break;
+                }
+            }
+            if(isunique == 0)
+            {
+                uniquefiles[unique] = (File *)malloc(sizeof(File));
+                uniquefiles[unique] = files[i];
+                unique++;
+                // send the file to the client
+                buf_t packet;
+                struct buffer buf;
+                buf_malloc(&buf, sizeof(str_t), 2048);
+                buf_malloc(&packet, sizeof(str_t), 2048);
+
+                add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "");
+                add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", files[i]->filesize);
+                add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+                add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", files[i]->filename);
+                add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+                add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
+                coalsce_buffers(&buf, &packet);
+                int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
+                if(err < 0)
+                    perror("send");
+            }
+
+        }
+    }
+    buf_t packet;
+    struct buffer buf;
+    buf_malloc(&buf, sizeof(str_t), 2048);
+    buf_malloc(&packet, sizeof(str_t), 2048);
+
+    add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "DONE");
+    add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
+    add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
+    add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
+    add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
+    add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
+    coalsce_buffers(&buf, &packet);
+    int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
+    if(err < 0)
+        perror("send");
     pthread_mutex_unlock(&file_lock);
     return 0;
 }
 
-// int moreinfo_file()
-// {
+int moreinfo_file(Request *req, Server *client)
+{
+    // get the file size and permissions
+    pthread_mutex_lock(&file_lock);
+    int index = find_file(req->path);
+    if()
+    buf_t packet;
+    struct buffer buf;
+    buf_malloc(&buf, sizeof(str_t), 2048);
+    buf_malloc(&packet, sizeof(str_t), 2048);
+    add_str_header(&CAST(str_t, packet.data)[0], "REQUEST:", "");
+    add_int_header(&CAST(str_t, packet.data)[1], "FILESIZE:", files[index]->filesize);
+    add_str_header(&CAST(str_t, packet.data)[2], "FILENAME:", files[index]->filename);
+    add_int_header(&CAST(str_t, packet.data)[3], "READ:", files[index]->read_perm);
+    coalsce_buffers(&buf, &packet);
+    int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
+    if(err < 0)
+        perror("send");
 
-// }
+    pthread_mutex_unlock(&file_lock);
+    return 0;
+}

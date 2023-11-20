@@ -20,15 +20,6 @@ int main()
     client_addr.sin_port = htons(DEFAULT_CLIENT_PORT);
     client_addr.sin_addr.s_addr = htonl(INADDR_ANY);
 
-    // binding client
-    if(bind(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr)) < 0)
-    {
-        perror("bind");
-        exit(0);
-    }
-    else
-        printf("Socket bound to address and port.\n");
-
     if (listen(client_socket, 100) < 0)
     {
         perror("listen");
