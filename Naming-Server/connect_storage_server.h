@@ -14,16 +14,23 @@ void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
 
 typedef struct file_info{
-    char path[1024];
+    char ss_ip[50];
+    char ns_port[5];
+    char client_port[5];
+    int num_files;
+    char filename[1024];
+    uint64_t filesize;
     struct sockaddr_in storageserver;
     int storageserver_socket;
+
+
     int write_perm; // 0 for no, 1 for yes
     int read_perm;  // 0 for no, 1 for yes
     int deleted;
 } File;
 
 extern pthread_mutex_t file_lock;
-extern File files[10000];
+extern File *files[10000];
 
 extern int filecount;
 
@@ -35,7 +42,8 @@ typedef struct serv{
 // make the threadpool thing 
 extern tpool_t* thread_pool;
 
-extern Server *NS;
+extern Server *NS_storage;
+extern Server *NS_client;
 
 
 

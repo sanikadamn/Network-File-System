@@ -21,6 +21,7 @@ typedef struct res{
 } Response;
 
 
+
 void *connectClientToNS(void *arg);
 void *clientRequests(void *arg);
 int find_file(char path[]);

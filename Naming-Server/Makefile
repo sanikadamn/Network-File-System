@@ -22,6 +22,8 @@ SRCS = \
 	../common/thread_pool.c \
 	client_operations.c \
 	connect_storage_server.c \
+	../common/packets.c \
+	../common/buffer.c \
 
 OBJS = $(SRCS:.c=.o)
 

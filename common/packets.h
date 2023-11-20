@@ -77,6 +77,6 @@ void readline (int fd, buf_t* buffer);
  * (here, the angular brackets are for illustration)
  *  */
 i32 read_i32 (int fd, char* hname);
-i64 read_64 (int fd, char* hname);
+i64 read_i64 (int fd, char* hname);
 buf_t* read_str (int fd, const char* hname);
 #endif

@@ -2,6 +2,17 @@
 #include <sys/types.h>
 #include <stdint.h>
 
+/**
+REQUEST: 
+FILENAME:
+**/
+
+/**
+STATUS:
+IP:
+CPORT:
+**/
+
 // connect the clients to the naming server
 void *connectClientToNS(void *arg)
 {
@@ -9,8 +20,8 @@ void *connectClientToNS(void *arg)
     {
         int connfd;
         struct sockaddr_in client_addr;
-        uint len = sizeof(client_addr);
-        connfd = accept(NS->server_socket, (struct sockaddr*)&client_addr, &len);
+        uint32_t len = sizeof(client_addr);
+        connfd = accept(NS_client->server_socket, (struct sockaddr*)&client_addr, &len);
         if (connfd < 0)
         {
             perror("accept");
@@ -34,8 +45,30 @@ void *clientRequests(void *arg)
     while(1)
     {
         // get the request from the client
+        buf_t client_packet;
+        buf_malloc(&client_packet, sizeof(str_t), 2048);
         Request *req = (Request *)malloc(sizeof(Request));
-        read(client->server_socket, req, sizeof(Request));
+
+        int bytes_read = recv(client->server_socket, client_packet.data, sizeof(buf_t), MSG_PEEK);
+        if (bytes_read < 0)
+        {
+            perror("read");
+            break;
+        }
+        else if (bytes_read == 0)
+        {
+            printf("Connection closed by client\n");
+            break;
+        }
+
+        // convert packet to struct
+        i32 req_type = read_i32(client->server_socket, "REQUEST:");
+        buf_t *path = read_str(client->server_socket, "FILENAME:");
+        // store the request in the request struct
+        req->req_type = req_type;
+        strcpy(req->path, CAST(char, path->data));
+
+
         // switch statement to handle the request
         switch (req->req_type)
         {
@@ -62,6 +95,7 @@ void *clientRequests(void *arg)
         }
 
     }
+    return NULL;
 }
 
 int find_file(char path[])
@@ -69,24 +103,30 @@ int find_file(char path[])
     // return the index in the array of the file
     for (int i = 0; i < filecount; i++)
     {
-        if (strcmp(files[i].path, path) == 0)
+        if (strcmp(files[i]->filename, path) == 0)
             return i;
     }
     return -1;
 }
 
-int write_tofile(Request *req, Server *client)
+int read_write(Request *req, Server *client, int read)
 {
     // for writing, check if the user has permissions + if the file exists
     pthread_mutex_lock(&file_lock);
     int index = find_file(req->path);
+    buf_t packet;
+    struct buffer buf;
+    buf_malloc(&buf, sizeof(str_t), 2048);
+    buf_malloc(&packet, sizeof(str_t), 2048);
+    
+
     if (filecount == 0)
     {
         // send error to the client
         pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOSERV;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
+        add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOSERV");
+        coalsce_buffers(&buf, &packet);
+        int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
             perror("send");
         return -1;
@@ -95,29 +135,30 @@ int write_tofile(Request *req, Server *client)
     {
         // send error to the client
         pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOTFOUND;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
+        add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOTFOUND");
+        coalsce_buffers(&buf, &packet);
+        int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
             perror("send");
         return -1;
     }
-    if(files[index].write_perm == 0)
+    if((read == 0 && files[index]->write_perm == 0) || (read == 1 && files[index]->read_perm == 0))
     {
+        // send error to the client
         pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOPERM;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
+        add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOPERM");
+        coalsce_buffers(&buf, &packet);
+        int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
         if (err < 0)
             perror("send");
         return -1;
     }
     // if the file exists and the user has permissions, send the data to the client
-    Response *res = (Response *)malloc(sizeof(Response));
-    res->errortype = NO_ERROR;
-    res->server_addr = files[index].storageserver;
-    res->server_socket = files[index].storageserver_socket;
-    int err = send(client->server_socket, res, sizeof(Response), 0);
+    add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "NO_ERROR");
+    add_str_header(&CAST(str_t, packet.data)[1], "IP:", files[index]->ss_ip);
+    add_str_header(&CAST(str_t, packet.data)[2], "CPORT:", files[index]->client_port);
+    coalsce_buffers(&buf, &packet);
+    int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
     if (err < 0)
         perror("send");
     pthread_mutex_unlock(&file_lock);
@@ -125,55 +166,15 @@ int write_tofile(Request *req, Server *client)
     return 0;
 }
 
+int write_tofile(Request *req, Server *client)
+{
+    return read_write(req, client, 0);
+}
+
 
 int read_fromfile(Request *req, Server *client)
 {
-    // for reading, check if the user has permissions + if the file exists
-    pthread_mutex_lock(&file_lock);
-    int index = find_file(req->path);
-    if (filecount == 0)
-    {
-        // send error to the client
-        pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOSERV;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
-        if (err < 0)
-            perror("send");
-        return -1;
-    }
-    if(index == -1)
-    {
-        // send error to the client
-        pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOTFOUND;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
-        if (err < 0)
-            perror("send");
-        return -1;
-    }
-    if(files[index].read_perm == 0)
-    {
-        pthread_mutex_unlock(&file_lock);
-        Response *res = (Response *)malloc(sizeof(Response));
-        res->errortype = ENOPERM;
-        int err = send(client->server_socket, res, sizeof(Response), 0);
-        if (err < 0)
-            perror("send");
-        return -1;
-    }
-    // if the file exists and the user has permissions, send the data to the client
-    Response *res = (Response *)malloc(sizeof(Response));
-    res->errortype = NO_ERROR;
-    res->server_addr = files[index].storageserver;
-    res->server_socket = files[index].storageserver_socket;
-    int err = send(client->server_socket, res, sizeof(Response), 0);
-    if (err < 0)
-        perror("send");
-    pthread_mutex_unlock(&file_lock);
-
-    return 0;
+    return read_write(req, client, 1);
 }
 
 int delete_file(Request *req, Server *client)
@@ -183,15 +184,19 @@ int delete_file(Request *req, Server *client)
     // if the file is not found, send error to the client
     pthread_mutex_lock(&file_lock);
     for (int i = 0; i< filecount; i++)
-    {
-        Command *cmd = (Command *)malloc(sizeof(Command));
-        cmd->type = DELETE;
-        strcpy(cmd->path, req->path);
-        if (strcmp(files[i].path, req->path) == 0)
+    {        
+        if (strcmp(files[i]->filename, req->path) == 0)
         {
-            files[i].deleted = 1;
+            buf_t packet;
+            struct buffer buf;
+            buf_malloc(&buf, sizeof(str_t), 2048);
+            buf_malloc(&packet, sizeof(str_t), 2048);
+            add_str_header(&CAST(str_t, packet.data)[0], "REQUEST:", "DELETE");
+            add_str_header(&CAST(str_t, packet.data)[1], "FILENAME:", req->path);
+            coalsce_buffers(&buf, &packet);
+            files[i]->deleted = 1;
             // send delete command to the storage server
-            int err = send(files[i].storageserver_socket, cmd, sizeof(Command), 0);
+            int err = send(files[i]->storageserver_socket, &buf, sizeof(buf_t), 0);
             if (err < 0)
                 perror("send");
         }
@@ -212,6 +217,7 @@ int list_file(Request *req, Server *client)
     // and send the list of those files to the client
     
     pthread_mutex_unlock(&file_lock);
+    return 0;
 }
 
 // int moreinfo_file()

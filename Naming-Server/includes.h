@@ -7,7 +7,9 @@
 #include <netinet/ip.h>
 #include <arpa/inet.h>
 
-#define DEFAULT_NS_PORT 3112
+#define DEFAULT_NS_SS_PORT 3112
+#define DEFAULT_NS_CLIENT_PORT 3113
+
 #ifndef NUM_THREADS
 #define NUM_THREADS 50
 #endif
@@ -17,3 +19,4 @@
 #include "../error_codes.h"
 #include "../common/Structures.h"
 #include "../common/buffer.h"
+#include "../common/packets.h"
