@@ -27,10 +27,6 @@
 #include "../common/concurrency.h"
 #include "constants.h"
 
-void respond (int fd) {
-    buf_t* buffer = read_str(fd, "");
-}
-
 void respond_read (int fd) {
     buf_t* filename = read_str(fd, "FILENAME:");
     char* real_filename = deserialize_string(CAST(char, filename->data));
@@ -53,7 +49,7 @@ void respond_read (int fd) {
         while (num_bytes < BUFSIZE) {
             // Ideally, it would have been nice to have a tee...
             num_bytes -= BUFSIZE;
-            read(fd_file, buffer, BUFSIZE, 0);
+            read(fd_file, buffer, BUFSIZE);
             send(fd, buffer, BUFSIZE, 0);
         }
     }
@@ -77,11 +73,11 @@ void respond_write (int fd) {
         // Ideally, it would have been nice to have a tee...
         num_bytes -= BUFSIZE;
         recv(fd, buffer, BUFSIZE, 0);
-        write(fd_file, buffer, BUFSIZE, 0);
+        write(fd_file, buffer, BUFSIZE);
     }
 
     recv(fd, buffer, num_bytes, 0);
-    write(fd_file, buffer, num_bytes, 0);
+    write(fd_file, buffer, num_bytes);
     fsync(fd);
 
     if (file != NULL) {

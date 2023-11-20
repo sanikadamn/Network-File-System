@@ -19,7 +19,7 @@ pthread_mutex_t ns_lock;
 pthread_once_t once_control = PTHREAD_ONCE_INIT;
 
 
-void init_ns_lock (void*) {
+void init_ns_lock () {
     pthread_mutex_init(&ns_lock, NULL);}
 
 void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
@@ -72,6 +72,9 @@ void respond_copyin (int ns_socket) {
     if (file != NULL) {
         WRITER_ENTER(file);
     }
+
+    char* remote_file
+
     int fd = open(CAST(char, filename->data), O_CREAT | O_WRONLY);
 
     char buffer[BUFSIZE];
@@ -79,11 +82,11 @@ void respond_copyin (int ns_socket) {
         // Ideally, it would have been nice to have a tee...
         num_bytes -= BUFSIZE;
         recv(ns_socket, buffer, BUFSIZE, 0);
-        write(fd, buffer, BUFSIZE, 0);
+        write(fd, buffer, BUFSIZE);
     }
 
     recv(ns_socket, buffer, num_bytes, 0);
-    write(fd, buffer, num_bytes, 0);
+    write(fd, buffer, num_bytes);
 
     fsync(fd);
 
@@ -94,7 +97,7 @@ void respond_copyin (int ns_socket) {
         file->file_size += num_bytes;
         WRITER_EXIT(file);
     } else {
-        add_file(filename, num_bytes);
+        add_file(filename,; num_bytes);
     }
 
     free(file);
@@ -118,13 +121,13 @@ void respond_copyout (int ns_socket) {
         coalsce_buffers(&total, &headers);
         send(ns_socket, CAST(char, headers.data), headers.len, 0);
 
-        int fd = open(CAST(char, file->data), O_CREAT | O_RDONLY);
+        int fd = open(CAST(char, file->local_filename.data), O_CREAT | O_RDONLY);
         i64 num_bytes = file->file_size;
         char buffer[BUFSIZE];
         while (num_bytes < BUFSIZE) {
             // Ideally, it would have been nice to have a tee...
             num_bytes -= BUFSIZE;
-            read(fd, buffer, BUFSIZE, 0);
+            read(fd, buffer, BUFSIZE);
             send(ns_socket, buffer, BUFSIZE, 0);
         }
     }
@@ -176,7 +179,7 @@ void listen_ns (void* arg) {
     char buffer[512];
     while ((err = recv(ns_socket, buffer, sizeof(buffer), MSG_PEEK))) {
         pthread_mutex_lock(&ns_lock);
-        char* op = read_str(ns_socket, "");
+        char* op = read_str(ns_socket, "REQUEST:");
 
         if (strcmp(op, "COPYIN") != 0) respond_copyin(ns_socket);
         if (strcmp(op, "COPYOUT") != 0) respond_copyout(ns_socket);
