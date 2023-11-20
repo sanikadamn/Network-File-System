@@ -20,5 +20,7 @@ int buf_malloc (struct buffer *buffer, size_t el_size, size_t capacity);
 
 int buf_resize (struct buffer* buffer, size_t new_capacity);
 
+void buf_cpy (struct buffer* dest, struct buffer*  src);
+
 void buf_free (struct buffer *buffer);
 #endif // __BUFFER_H_
