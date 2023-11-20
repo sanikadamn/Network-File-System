@@ -3,6 +3,7 @@
 
 
 // Required to use the correct POSIX version while compiling with C99 standards
+#include <pthread.h>
 #if __STDC_VERSION__ >= 199901L
 # define _XOPEN_SOURCE 600
 #else
@@ -28,10 +29,7 @@ struct file_metadata {
     size_t file_size;
     int deleted;
 
-    sem_t lock;
-    sem_t read_lock;
-    sem_t queue;
-    int readcount;
+    pthread_rwlock_t rwlock;
 };
 
 struct files {
@@ -39,10 +37,7 @@ struct files {
     str_t packet;
     int changed; // marks if the packet has changed
 
-    sem_t lock;
-    sem_t read_lock;
-    sem_t queue;
-    int readcount;
+    pthread_rwlock_t rwlock;
 };
 
 
