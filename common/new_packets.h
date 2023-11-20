@@ -1,0 +1,32 @@
+/* going to define all the new packets here */
+
+/* type A
+** broad c->ns packets
+** they work for: read, write, info, create, delete
+*/
+typedef struct {
+    char *action;
+    char *filename;
+    int numbytes; // required only for write request
+} packet_a;
+
+/* type B
+** ss init packets
+** has been done
+*/
+
+/* type C
+** feedback packets
+*/
+typedef struct {
+    int status; // specify different codes depending on the sender, receiver, and action for which feedback is being sent
+    int numbytes; // required only for read request's feedback
+} packet_c;
+
+/* type D
+** redirect packets (from ns to ss)
+*/
+typedef struct {
+    char *ip;
+    int port;
+} packet_d;

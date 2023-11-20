@@ -213,8 +213,8 @@ int delete_file(Request *req, Server *client)
         {
             buf_t packet;
             struct buffer buf;
-            buf_malloc(&buf, sizeof(str_t), 2048);
-            buf_malloc(&packet, sizeof(str_t), 2048);
+            buf_malloc(&buf, sizeof(str_t), 2048); // not rew
+            buf_malloc(&packet, sizeof(str_t), 2048); // sixe = 6
             add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "DELETE");
             add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
             add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
@@ -224,7 +224,7 @@ int delete_file(Request *req, Server *client)
             coalsce_buffers(&buf, &packet);
             files[i]->deleted = 1;
             // send delete command to the storage server
-            int err = send(files[i]->storageserver_socket, &buf, sizeof(buf_t), 0);
+            int err = send(files[i]->storageserver_socket, &buf, sizeof(buf_t), 0); // CAST(char, buf->data), buf->len
             if (err < 0)
                 perror("send");
         }

@@ -14,6 +14,7 @@ typedef struct res{
     int server_socket;
 } Response;
 
-void *name_server_operations(void *arg);
+buf_t *creq_to_ns(char *req, char *file);
+int validate_ns_response(buf_t *response);
 
 #endif

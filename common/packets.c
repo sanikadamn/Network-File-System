@@ -9,11 +9,13 @@
  *
  *
  *  1. Convert struct to packet
- *  add_str_header(&buffer[0], "OP:", "READ");
- *  add_str_header(&buffer[1], "FILENAME:", "filename");
- *  add_int_header(&buffer[2], "PORT", portno);
+ *  buf_t srcs;
+ *  buf_malloc(&srcs, sizeof(buf_t), 3);
+ *  add_str_header(&CAST(str_t, srcs.data)[0], "OP:", "READ");
+ *  add_str_header(&CAST(str_t, srcs.data)[1], "FILENAME:", "filename");
+ *  add_int_header(&CAST(str_t, srcs.data)[2], "PORT:", portno);
  *
- *  coalsce_buffers(buffer, 2);
+ *  coalsce_buffers(&dest, &srcs);
  *
  *  2. Convert packet to struct
  *  (fd is where we are reading from)
