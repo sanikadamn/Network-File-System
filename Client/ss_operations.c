@@ -8,43 +8,24 @@ void ss_connect(buf_t *ns_res)
     client_ss_socket = init_connection(ip, port);
 }
 
-void ss_read_req(char *filepath)
+int ss_read_req(char *action, char *file)
 {
-    buf_t *request;
-    buf_malloc(request, sizeof(char), 2);
-    (*request).len = 2;
+    packet_a req;
+    strcpy(req.action, action);
+    strcpy(req.filename, file);
 
-    // add headers
-    add_str_header(&request[0], "REQUEST:", "READ");
-    add_str_header(&request[1], "FILENAME:", filepath);
+    int len = MAX_ACTION_LENGTH+MAX_FILENAME_LENGTH+20
+    char request[len];
 
-    // coalesce the buffers
-    buf_t* packet;
-    coalsce_buffers(packet, request);
+    sprintf(request, "ACTION:%s\nFILENAME:%s", req.action, req.filename);
 
-    // send to storage server
-    int send_ret = send(client_ss_socket, CAST(char, packet->data), packet->len, 0);
-    if(send_ret < 0)
+    // send request to ss
+    if(send(client_ss_socket, request, , 0) < 0)
     {
-        perror("[-] error sending request to storage server");
+        perror("[-] send error");
         exit(0);
     }
 
-    buf_t response;
-    buf_malloc(&response, sizeof(char), 1024);
-    int status = read_i32(client_ss_socket, "STATUS:");
-    if (status == SS_FILE_FOUND) {
-        while(1) {
-            int recv_ret = recv(client_ss_socket, CAST(char, response.data), 1024, MSG_PEEK);
-            if(recv_ret < 0)
-            {
-                perror("[-] error receiving response from storage server");
-                exit(0);
-            }
-            if (response.len == 0) {
-                break;
-            }
-            printf("%s", CAST(char, response.data));
-        }
-    }
+    // receive feedback from ss
+    char feedback[MAX_FEEDBACK_LENGTH+20];
 }

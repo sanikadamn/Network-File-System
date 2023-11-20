@@ -1,12 +1,14 @@
+#ifndef NEW_PACKETS_H
+#define NEW_PACKETS_H
 /* going to define all the new packets here */
-
+#include "globals.h"
 /* type A
 ** broad c->ns packets
 ** they work for: read, write, info, create, delete
 */
 typedef struct {
-    char *action;
-    char *filename;
+    char action[MAX_ACTION_LENGTH];
+    char filename[MAX_FILENAME_LENGTH];
     int numbytes; // required only for write request
 } packet_a;
 
@@ -27,6 +29,8 @@ typedef struct {
 ** redirect packets (from ns to ss)
 */
 typedef struct {
-    char *ip;
+    char ip[MAX_IP_LENGTH];
     int port;
 } packet_d;
+
+#endif
