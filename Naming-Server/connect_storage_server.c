@@ -139,7 +139,5 @@ void* connectStorageServer(void* arg) {
 		storage->server_addr = storage_server;
 		tpool_work(thread_pool, (void (*)(void*))getFileInfo,
 		           (void*)storage);
-		// pthread_create(&get_file_info, NULL, getFileInfo, (void
-		// *)storage);
 	}
 }

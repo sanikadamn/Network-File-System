@@ -12,6 +12,7 @@
 typedef struct req {
     int req_type;
     char path[1024];
+    char location[1024];
 } Request;
 
 typedef struct res{
@@ -32,5 +33,6 @@ int create_file(Request *req, Server *client);
 int moreinfo_file(Request *req, Server *client);
 int list_file(Request *req, Server *client);
 int read_write(Request *req, Server *client, int read);
+int copy_file(Request *req, Server *client);
 
 #endif
