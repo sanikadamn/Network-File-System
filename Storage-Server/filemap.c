@@ -10,6 +10,8 @@
 
 #include "constants.h"
 #include "filemap.h"
+#include "network.h"
+#include "../common/concurrency.h"
 
 // NOLINTBEGIN(concurrency-*)
 void get_files(buf_t* f, char* path) {
@@ -133,4 +135,25 @@ struct files* init_ss_filemaps(char* path) {
 	get_files(&f->files, path);
 
 	return f;
+}
+
+int add_file (buf_t remote_filename, buf_t local_filename, int num_bytes) {
+	WRITER_ENTER(ss_files);
+	while (ss_files->files.len >= ss_files->files.capacity) {
+		buf_resize(ss_files, 2 * ss_files->files.capacity);
+	}
+
+	struct file_metadata* files = CAST(struct file_metadata, ss_files->files.data);
+	int filepos = ss_files->files.len;
+
+	files[filepos].deleted = 0;
+	files[filepos].file_size = num_bytes;
+	buf_cpy(&files[filepos].local_filename, &local_filename);
+	buf_cpy(&files[filepos].local_filename, &remote_filename);
+	pthread_rwlock_init(&files[filepos].rwlock, 0);
+
+	ss_files->files.len++;
+	WRITER_EXIT(ss_files);
+
+	return 1;
 }
