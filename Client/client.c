@@ -18,15 +18,6 @@ int init_connection(char *ip, int port)
     client_addr.sin_port = htons(port);
     client_addr.sin_addr.s_addr = inet_addr(ip);
 
-<<<<<<< HEAD
-    if (listen(client_socket, 100) < 0)
-    {
-        perror("listen");
-        exit(0);
-    }
-    else
-        printf("Listening on port %d.\n", DEFAULT_CLIENT_PORT);
-=======
     int cnnct_ret = connect(client_socket, (struct sockaddr*)&client_addr, sizeof(client_addr));
     if(cnnct_ret < 0)
     {
@@ -38,7 +29,6 @@ int init_connection(char *ip, int port)
 
     return client_socket;
 }
->>>>>>> 09d3b0dd6c9e23d436b6127130ff820373592945
 
 int main()
 {
