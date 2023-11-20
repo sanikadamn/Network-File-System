@@ -1,5 +1,6 @@
 #include <dirent.h>
 #include <errno.h>
+#include <pthread.h>
 #include <semaphore.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -124,11 +125,9 @@ struct files* init_ss_filemaps(char* path) {
 	free(ssignore_path);
 
 	struct files* f = malloc(sizeof(struct files));
-	// TODO: Fix initial values of semaphore initialisation
-	sem_init(&f->queue, 0, 1);
-	sem_init(&f->lock, 0, 1);
-	sem_init(&f->read_lock, 0, 1);
-	f->readcount = 0;
+
+	pthread_rwlock_init(&(f->rwlock), 0);
+
 	f->changed = 1;
 
 	get_files(&f->files, path);
