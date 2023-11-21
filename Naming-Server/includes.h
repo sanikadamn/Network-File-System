@@ -29,3 +29,4 @@ extern pthread_rwlock_t servercount_lock;
 #include "../common/buffer.h"
 #include "../common/packets.h"
 #include "../common/new_packets.h"
+#include "../common/readline.h"

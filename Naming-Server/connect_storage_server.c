@@ -17,103 +17,124 @@ int filecount = 0;
 int servercount = 0;
 int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
 
+
+
 void* getFileInfo(void* arg) {
-	printf("Here\n");
 	// get the file paths from the storage server
 	// assuming that the storage server sends the files as an array of file
 	// paths
 	Server* storage = (Server*)arg;
 
 	// read one file packet
-	buf_t file_packet;
-	buf_malloc(&file_packet, sizeof(str_t), 2048);
-    int numberfiles = 0;
 	while (1) {
-		int bytes_read = recv(storage->server_socket, file_packet.data,
-		                      sizeof(buf_t), MSG_PEEK);
-		if (bytes_read < 0) {
-			perror("read");
-			break;
+		int err;
+		char *ip = read_line(storage->server_socket, 50, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return;
 		}
-		if (bytes_read == 0) {
-			printf("Done reading\n");
-			break;
-		}
-		// convert packet to struct
-		buf_t* ip = read_str(storage->server_socket, "IP:");
-		i32 nport = read_i32(storage->server_socket, "NPORT:");
-		i32 cport = read_i32(storage->server_socket, "CPORT:");
-		i32 numfiles = read_i32(storage->server_socket, "NUMFILES:");
-		buf_t* filename = read_str(storage->server_socket, "FILENAME:");
-		i64 filesize = read_i64(storage->server_socket, "FILESIZE:");
+		char ip_addr[50];
+		sscanf(ip, "IP:%s", ip_addr);
+		free(ip);
 
-		// check if the file is already in the array
-		int file_exists = 0;
-        pthread_mutex_lock(&file_lock);
-		for (int i = 0; i < filecount; i++) {
-			if (strcmp(files[i]->filename, CAST(char, filename->data)) == 0)
-			{
-				int pos = -1;
-				for (int j = 0; j < COPY_SERVERS; j++) {
-					// check if the storage server already exists
-					if (files[i]->storageserver_socket[j] == storage->server_socket)
-					{
-						pos = j;
-						break;
-					}
-				}
-				if(pos == -1)
-				for (int j = 0; j < COPY_SERVERS; j++) {
-				if (files[i]->storageserver_socket[j] == -1) 
-                    {
-                        strcpy(files[i]->ss_ip[j], CAST(char, ip->data));
-						files[i]->ns_port[j] = nport;
-						files[i]->client_port[j] = cport;
-						files[i]->storageserver_socket[j] = storage->server_socket;
-						files[i]->storageserver[j] = storage->server_addr;
-						break;
-					}
-				}
-				file_exists = 1;
-				break;
+		char *np = read_line(storage->server_socket, 10, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return;
+		}
+		int nport;
+		sscanf(np, "NPORT:%d", &nport);
+		free(np);
+
+		char *cp = read_line(storage->server_socket, 10, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return;
+		}
+		int cport;
+		sscanf(cp, "CPORT:%d", &cport);
+		free(cp);
+
+		char *nf = read_line(storage->server_socket, 20, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return;
+		}
+		int numfiles;
+		sscanf(nf, "NUMFILES:%d", &numfiles);
+		free(nf);
+
+		while(numfiles --)
+		{
+			char *filename_header = read_line(storage->server_socket, MAX_FILENAME_LENGTH, &err);
+			if (err == -1) {
+				perror("ns receive");
+				return;
 			}
-		}
-		if (file_exists == 0) {
+			char filename[MAX_FILENAME_LENGTH];
+			sscanf(filename_header, "FILENAME:%s", filename_header);
+			free(filename_header);
 
-			// store this file in the file array
-			strcpy(files[filecount]->ss_ip[0], CAST(char, ip->data));
-			files[filecount]->ns_port[0] = nport;
-			files[filecount]->client_port[0] = cport;
-			files[filecount]->num_files = numfiles;
-			strcpy(files[filecount]->filename,
-			       CAST(char, filename->data));
-			files[filecount]->filesize = filesize;
-			for (int i = 0; i < COPY_SERVERS; i++)
-				files[filecount]->storageserver_socket[i] = -1;
+			char *fs = read_line(storage->server_socket, 20, &err);
+			if (err == -1) {
+				perror("ns receive");
+				return;
+			}
+			int filesize;
+			sscanf(fs, "FILESIZE:%d", &filesize);
+			free(fs);
 
-			files[filecount]->storageserver[0] =
-			    storage->server_addr;
-			files[filecount]->storageserver_socket[0] =
-			    storage->server_socket;
-			filecount++;
+			// check if the file already exists
+			pthread_mutex_lock(&file_lock);
+			int fileexists = 0;
+			for(int i = 0; i < filecount && !fileexists; i ++)
+			{
+				if(strcmp(files[i]->filename, filename) == 0)
+				{
+					fileexists = 1;
+					int assigned = 0;
+					for (int j = 0; j < COPY_SERVERS; j++)
+					{
+						// TODO: correct this info
+						if(files[i]->on_servers[j]->server_socket == storage->server_socket)
+						{
+							assigned = 1;
+							break;
+						}
+
+						if (assigned == 0 && files[i]->on_servers[j]->server_socket == -1)
+						{
+							files[i]->on_servers[j]->server_socket = storage->server_socket;
+							files[i]->on_servers[j]->server_addr = storage->server_addr;
+							break;
+						}
+					}
+				}
+			}
+			if (fileexists == 0)
+			{
+				files[filecount]->deleted = 0;
+				strcpy(files[filecount]->filename, filename);
+				files[filecount]->on_servers[0]->server_addr = storage->server_addr;
+				files[filecount]->on_servers[0]->server_socket = storage->server_socket;
+				for (int j = 1; j < COPY_SERVERS; j ++)
+				{
+					files[filecount]->on_servers[j]->server_socket = -1;
+				}
+				filecount ++;
+			}
+			int serverindex = -1;
+			for(int i = 0; i < servercount; i++)
+			{
+				if(servers[i]->server_socket == storage->server_socket)
+				{
+					servers[i]->filesize += filesize;
+					break;
+				}
+			}
+			pthread_mutex_unlock(&file_lock);
 		}
-        // find what server the file is in in the server array
-        int serverindex = -1;
-        for(int i = 0; i < servercount; i++)
-        {
-            if(servers[i]->server_socket == storage->server_socket)
-            {
-                serverindex = i;
-                break;
-            }
-        }
-        // add the file to the server array
-        servers[serverindex]->filesize += filesize;
-		pthread_mutex_unlock(&file_lock);
-        numberfiles++;
-        if(numberfiles == numfiles)
-            break;
-		print("%d\n", filecount);
+
 	}
 
 	return NULL;

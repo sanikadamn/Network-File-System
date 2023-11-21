@@ -13,16 +13,15 @@
 void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
 
-typedef struct file_info{
-    char ss_ip[COPY_SERVERS][50];
-    int ns_port[COPY_SERVERS];
-    int client_port[COPY_SERVERS];
-    int num_files;
-    char filename[1024];
+typedef struct serv{
+    int server_socket;
+    struct sockaddr_in server_addr;
     uint64_t filesize;
-    struct sockaddr_in storageserver[COPY_SERVERS];
-    int storageserver_socket[COPY_SERVERS];
+} Server;
 
+typedef struct file_info{
+    Server *on_servers[COPY_SERVERS];
+    char filename[1024];
     int deleted;
 } File;
 
@@ -31,12 +30,6 @@ extern File *files[10000];
 
 extern int filecount;
 extern int servercount;
-
-typedef struct serv{
-    int server_socket;
-    struct sockaddr_in server_addr;
-    uint64_t filesize;
-} Server;
 
 // make the threadpool thing 
 extern tpool_t* thread_pool;
