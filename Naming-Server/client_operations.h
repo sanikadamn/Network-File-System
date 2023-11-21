@@ -26,13 +26,13 @@ typedef struct res{
 void *connectClientToNS(void *arg);
 void *clientRequests(void *arg);
 int find_file(char path[]);
-int write_tofile(Request *req, Server *client);
+int write_tofile(int fd);
 int read_fromfile(int fd);
-int delete_file(Request *req, Server *client);
-int create_file(Request *req, Server *client);
-int moreinfo_file(Request *req, Server *client);
-int list_file(Request *req, Server *client);
-int read_write(int fd int read);
-int copy_file(Request *req, Server *client);
+int delete_file(int fd);
+int create_file(int fd);
+int moreinfo_file(int fd);
+int list_file(int fd);
+int read_write(int fd, int read);
+int copy_file(int fd);
 
 #endif
