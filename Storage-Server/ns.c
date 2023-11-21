@@ -183,7 +183,7 @@ void send_heartbeat(void* arg) {
 		}
 
 		READER_EXIT(ss_files);
-		sleep(1); // NOLINT(concurrency-mt-unsafe)
+		sleep(10); // NOLINT(concurrency-mt-unsafe)
 	}
 	return;
 }

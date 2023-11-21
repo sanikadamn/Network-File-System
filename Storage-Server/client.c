@@ -148,7 +148,6 @@ void respond_write (int fd) {
 }
 
 
-// TODO: Fix!!
 void respond_info (int fd) {
     printf("responding to read\n");
     const char filename_header[] = "FILENAME:";
@@ -162,10 +161,25 @@ void respond_info (int fd) {
     free(header);
 
     printf("filename received: %s\n", filename);
-    send(fd, "STATUS:200\n", 12, 0);
-    send(fd, "SIZE:50\n", 8, 0);
-    send(fd, "PERM:50\n", 8, 0);
 
+    struct file_metadata* f = search_file(filename);
+
+    if (f == NULL) {
+        // send not found
+    }
+    else {
+    // send found
+    send(fd, "STATUS:200\n", 12, 0);
+    char size_buf[30];
+    sprintf(size_buf, "SIZE:%zu\n", f->file_size);
+    send(fd, size_buf, strlen(size_buf), 0);
+
+    char perms_buf[30];
+    sprintf(perms_buf, "PERM:%d\n", f->perms);
+    send(fd, perms_buf, strlen(perms_buf), 0);
+
+
+    }
     free(filename);
 }
 
