@@ -113,9 +113,8 @@ int read_write(int fd, int read)
     sscanf(header, "FILENAME:%s", filename);
     free(header);
 
-    
     pthread_mutex_lock(&file_lock);
-    int index = find_file(req->path);
+    int index = find_file(filename);
 
     if (filecount == 0)
     {
@@ -129,7 +128,7 @@ int read_write(int fd, int read)
         char request[len];
         sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
 
-        int err = send(client->server_socket, request, len, 0);
+        int err = send(fd, request, len, 0);
         if (err < 0)
             perror("send");
         return -1;
