@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "../common/thread_pool.h"
+#include "ns.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
@@ -33,6 +34,7 @@ int check_access(char* path) {
 }
 
 void init_server(char* root) {
+	chdir(root);
 	ss_files = init_ss_filemaps(root);
 
 	// Handle heartbeat

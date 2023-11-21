@@ -28,18 +28,18 @@ struct file_metadata {
     str_t local_filename;
     size_t file_size;
     int deleted;
+    int updated;
+    int perms;
 
     pthread_rwlock_t rwlock;
 };
 
 struct files {
     struct buffer files; // type: file_metadata
-    str_t packet;
-    int changed; // marks if the packet has changed
-
     pthread_rwlock_t rwlock;
 };
 
+extern struct files* ss_files;
 
 /*
 ** The local file name is unique. The goal is to be easy to search and sort.
@@ -72,4 +72,6 @@ void free_file_maps (struct files* file_maps);
 void get_files (buf_t* file_data, char* path);
 
 struct files* init_ss_filemaps(char* path);
+
+struct file_metadata* search_file (char* remote_path);
 #endif

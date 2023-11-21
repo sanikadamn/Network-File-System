@@ -84,7 +84,10 @@ void *clientRequests(void *arg)
         printf("action received: %s\n", action);
         // switch statement to handle the request
         if(strncmp(action, "read", 4) == 0) read_fromfile(client->server_socket);
-
+        else if(strncmp(action, "write", 5) == 0) write_tofile(client->server_socket);
+        else if(strncmp(action, "info", 4) == 0) moreinfo_file(client->server_socket);
+        else if(strncmp(action, "create", 6) == 0) create_file(client->server_socket);
+        else if(strncmp(action, "delete", 6) == 0) delete_file(client->server_socket);
     }
     return NULL;
 }
@@ -113,23 +116,22 @@ int read_write(int fd, int read)
     sscanf(header, "FILENAME:%s", filename);
     free(header);
 
-    
     pthread_mutex_lock(&file_lock);
-    int index = find_file(req->path);
+    int index = find_file(filename);
 
     if (filecount == 0)
     {
         // send error to the client
         pthread_mutex_unlock(&file_lock);
         packet_d packet;
-        packet.status = ENOSERV;
+        packet.status = 1;
         strcpy(packet.ip, "");
         packet.port = 0;
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
         sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
-
-        int err = send(client->server_socket, request, len, 0);
+        printf("No servers active\n");
+        int err = send(fd, request, len, 0);
         if (err < 0)
             perror("send");
         return -1;
@@ -145,8 +147,8 @@ int read_write(int fd, int read)
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
         sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
-
-        int err = send(client->server_socket, request, len, 0);
+        printf("File not found\n");
+        int err = send(fd, request, len, 0);
         if (err < 0)
             perror("send");
     }
@@ -161,8 +163,8 @@ int read_write(int fd, int read)
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
         sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
-
-        int err = send(client->server_socket, request, len, 0);
+        printf("Client does not have permission for this file\n");
+        int err = send(fd, request, len, 0);
         if (err < 0)
             perror("send");
     }
@@ -173,12 +175,11 @@ int read_write(int fd, int read)
     packet.status = OK;
     strcpy(packet.ip, files[index]->ss_ip[0]);
     packet.port = files[index]->client_port[0];
-
     int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
-    char request[len];
-    sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
+    char res[len];
+    sprintf(res, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
 
-    int err = send(client->server_socket, request, len, 0);
+    int err = send(fd, res, len, 0);
     if (err < 0)
         perror("send");
     pthread_mutex_unlock(&file_lock);
@@ -186,9 +187,9 @@ int read_write(int fd, int read)
     return 0;
 }
 
-int write_tofile(Request *req, Server *client)
+int write_tofile(int fd)
 {
-    return read_write(req, client, 0);
+    return read_write(fd, 0);
 }
 
 
@@ -197,31 +198,42 @@ int read_fromfile(int fd)
     return read_write(fd, 1);
 }
 
-int delete_file(Request *req, Server *client)
+int delete_file(int fd)
 {
     // for deleting, check what servers the files are in and send delete commands to all of them
     // find all instances of the file in the file array, set the bit to 1, and send delete commands to all the ss
     // if the file is not found, send error to the client
+    const char file_name_header[] = "FILENAME:";
+    int err;
+    char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+    packet_c fb = {0};
+
     pthread_mutex_lock(&file_lock);
     for (int i = 0; i< filecount; i++)
     {        
-        if (strncmp(files[i]->filename, req->path, strlen(req->path)) == 0)
+        if (strncmp(files[i]->filename, filename, strlen(filename)) == 0)
         {
             // check if all the servers are not -1
+            // TODO 
             if (files[i]->storageserver_socket[0] == -1 || files[i]->storageserver_socket[1] == -1 || files[i]->storageserver_socket[2] == -1)
             {
                 // send error to the client
                 continue;
             }
             packet_a packet;
-            strcpy(packet.action, "DELETE");
-            strcpy(packet.filename, req->path);
+            strcpy(packet.action, "delete");
+            strcpy(packet.filename, filename);
             packet.numbytes = 0;
 
             int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
             char request[len];
             sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n", packet.action, packet.filename, packet.numbytes);
-            files[i]->deleted = 1;
             // send delete command to the storage server
             for (int j = 0; j < COPY_SERVERS; j++)
             {
@@ -229,17 +241,36 @@ int delete_file(Request *req, Server *client)
                 if (err < 0)
                     perror("send");
             }
+            files[i]->deleted = 1;
+            fb.status = 1;
         }
     }
+    // send feedback to client
+    int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+    char request[len];
+    sprintf(request, "STATUS:%d\n", fb.status);
+    int err = send(fd, request, len, 0);
+    if (err < 0)
+        perror("send");
     pthread_mutex_unlock(&file_lock);
     return 0;
 }
 
-int create_file(Request *req, Server *client)
+int create_file(int fd)
 {
+    const char file_name_header[] = "FILENAME:";
+    int err;
+    char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
     // for creating, check if the file already exists, if it does, send error to the client
     pthread_mutex_lock(&file_lock);
-    int index = find_file(req->path);
+    int index = find_file(filename);
     if (index != -1)
     {
         packet_d packet;
@@ -249,8 +280,8 @@ int create_file(Request *req, Server *client)
 
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
-        sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
-        if (send(client->server_socket, request, len, 0) < 0)
+        sprintf(request, "STATUS:%d\n", packet.status, packet.ip, packet.port);
+        if (send(fd, request, len, 0) < 0)
             perror("send");
     }
     // if the file does not exist, send the create command to three storage servers 
@@ -271,13 +302,13 @@ int create_file(Request *req, Server *client)
     for (int i = 0; i < COPY_SERVERS; i++)
     {
         packet_a packet;
-        strcpy(packet.action, "CREATE");
-        strcpy(packet.filename, req->path);
+        strcpy(packet.action, "create");
+        strcpy(packet.filename, filename);
         packet.numbytes = 0;
 
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
-        sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n", packet.action, packet.filename, packet.numbytes);
+        sprintf(request, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
 
         for (int j = 0; j < COPY_SERVERS; j++)
         {
@@ -291,60 +322,7 @@ int create_file(Request *req, Server *client)
     return 0;
 }
 
-int moreinfo_file(Request *req, Server *client)
+int moreinfo_file(int fd)
 {
-    return read_write(req, client, 2);
+    return read_write(fd, 2);
 }
-
-// int copy_file(Request *req, Server *client)
-// {
-//     // have two filepaths, copy from one of them to the other
-//     // find file
-//     pthread_mutex_lock(&file_lock);
-//     int index = find_file(req->path);
-//     if(index == -1)
-//     {
-//         // send error to the client
-//         pthread_mutex_unlock(&file_lock);
-//         buf_t packet;
-//         struct buffer buf;
-//         buf_malloc(&buf, sizeof(str_t), 2048);
-//         buf_malloc(&packet, sizeof(str_t), 2048);
-//         add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "ENOTFOUND");
-//         add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
-//         add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
-//         add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", "");
-//         add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
-//         add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
-//         coalsce_buffers(&buf, &packet);
-//         int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
-//         if(err < 0)
-//             perror("send");
-//         return -1;
-//     }
-//     // if its a directory, need to find all the other files that are also part of it
-//     for(int i = 0; i < filecount; i ++)
-//     {
-//         // actually, need to get the contents from the ss and then send the contents to the path where we want to copy
-//         if(strncmp(req->path, files[i]->filename, strlen(req->path)))
-//         {
-//             // send copy command to the storage server
-//             buf_t packet;
-//             struct buffer buf;
-//             buf_malloc(&buf, sizeof(str_t), 2048);
-//             buf_malloc(&packet, sizeof(str_t), 2048);
-//             add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "COPY");
-//             add_str_header(&CAST(str_t, packet.data)[1], "FILESIZE:", "");
-//             add_str_header(&CAST(str_t, packet.data)[2], "PERMISSIONS:", "");
-//             add_str_header(&CAST(str_t, packet.data)[3], "FILENAME:", files[i]->filename);
-//             add_str_header(&CAST(str_t, packet.data)[4], "IP:", "");
-//             add_str_header(&CAST(str_t, packet.data)[5], "CPORT:", "");
-//             coalsce_buffers(&buf, &packet);
-//             int err = send(files[i]->storageserver_socket[0], &buf, sizeof(buf_t), 0);
-//             if(err < 0)
-//                 perror("send");
-//         }
-//     }
-//     pthread_mutex_unlock(&file_lock);
-//     return 0;
-// }
