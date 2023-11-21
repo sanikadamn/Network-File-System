@@ -73,9 +73,16 @@ int main()
     }
     else if(strcasecmp(choice, "create") == 0 || strcasecmp(choice, "delete") == 0)
     {
-        ns_expect_feedback(choice, filepath);
+        ns_expect_feedback(choice, filepath, "");
     }
-
+    else if(strcasecmp(choice, "copy") == 0)
+    {
+        char *filepath2 = (char *)malloc(sizeof(char) * 1024);
+        printf("Enter the destination filepath: ");
+        scanf("%s", filepath2);
+        ns_expect_feedback(choice, filepath, filepath2);
+    }
+    
     if(strcasecmp(choice, "read") == 0)
     {
         ss_read_req(choice, filepath);

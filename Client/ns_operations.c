@@ -71,18 +71,21 @@ packet_d ns_expect_redirect(char *action, char *file)
     return rd;
 }
 
-void ns_expect_feedback(char *action, char *file)
+void ns_expect_feedback(char *action, char *file1, char *file2)
 {
-    if(strcasecmp(action, "create") == 0 || strcasecmp(action, "delete") == 0)
+    if(strcasecmp(action, "create") == 0 || strcasecmp(action, "delete") == 0 || strcasecmp(action, "copy") == 0)
     {
         packet_a req;
         strcpy(req.action, action);
-        strcpy(req.filename, file);
+        strcpy(req.filename, file1);
 
         char request[MAX_STR_LENGTH];
         int len;
-
-        sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
+        
+        if(strcasecmp(action, "copy") != 0)
+            sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
+        else 
+            sprintf(request, "ACTION:%s\nFILENAME:%s\nDESTINATION:%s\n%n", req.action, req.filename, file2, &len);
 
         // send request to ns
         if(send(client_ns_socket, request, len, 0) < 0)
@@ -107,31 +110,3 @@ void ns_expect_feedback(char *action, char *file)
     }
     return;
 }
-
-// int validate_ns_response(buf_t *response)
-// {
-//     int status = read_i32(client_ns_socket, "STATUS:");
-//     if(status == ENOSERV)
-//     {
-//         printf("[-] no servers exist.\n");
-//     }
-//     else if(status == ENOTFOUND)
-//     {
-//         printf("[-] file not found.\n");
-//     }
-//     else if(status == ENOPERM)
-//     {
-//         printf("[-] you do not have permission to access this file.\n");
-//     }
-//     else if(status == NO_ERROR)
-//     {
-//         printf("[+] file found.\n");
-//         return 0;
-//     }
-//     else
-//     {
-//         printf("[-] unknown error.\n");
-//     }
-
-//     return -1;
-// }
