@@ -74,4 +74,6 @@ void get_files (buf_t* file_data, char* path);
 struct files* init_ss_filemaps(char* path);
 
 struct file_metadata* search_file (char* remote_path);
+
+void add_file (char* local_filename, char* remote_filename, int num_bytes, int perms);
 #endif

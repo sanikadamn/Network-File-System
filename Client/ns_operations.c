@@ -100,11 +100,11 @@ void ns_expect_feedback(char *action, char *file1, char *file2)
         feedback = read_line(client_ns_socket, MAX_STR_LENGTH+20);
         sscanf(feedback, "STATUS:%d", &fb.status);
 
-        if(fb.status == 0)
+        if(fb.status == ENOTFOUND)
             printf("[-] File not found\n");
         else if(fb.status == EINVAL)
             printf("[-] This file cannot be created because it already exists\n");
-        else if(fb.status == 1)
+        else if(fb.status == OK)
             printf("[+] 'File %s' action performed successfully\n", action);
         free(feedback);
     }
