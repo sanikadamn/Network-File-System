@@ -11,6 +11,7 @@
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
+#include "../common/concurrency.h"
 
 // NOLINTBEGIN(concurrency-*)
 void get_files(buf_t* f, char* path) {
@@ -58,6 +59,8 @@ void get_files(buf_t* f, char* path) {
 		// server
 		if (is_accessible(ent->d_name)) {
 			// Is accessible. Continue
+			char* filepath = realpath(ent->d_name, NULL);
+			filename_len = strlen(filepath);
 			buf_malloc(&file->local_filename, sizeof(char),
 			           filename_len + 1);
 			strncpy((char*)(file->local_filename.data), ent->d_name,
@@ -67,6 +70,7 @@ void get_files(buf_t* f, char* path) {
 
 			retrieve_remote_filename(&file->remote_filename,
 			                         &file->local_filename);
+			file->updated = 1;
 		} else {
 			fprintf(stderr, "Ignoring as not accessible\n");
 			f->len--;
@@ -129,18 +133,49 @@ struct files* init_ss_filemaps(char* path) {
 
 	pthread_rwlock_init(&(f->rwlock), 0);
 
-	f->changed = 1;
-
 	get_files(&f->files, path);
 
 	return f;
 }
 
+void add_file (char* local_filename, char* remote_filename, int num_bytes, int perms) {
+	WRITER_ENTER(ss_files);
+	if (ss_files->files.len >= ss_files->files.capacity) {
+		buf_resize(&(ss_files->files), 2 * ss_files->files.capacity);
+	}
+
+	struct file_metadata* files = CAST(struct file_metadata, ss_files->files.data);
+	int filepos = ss_files->files.len;
+
+	files[filepos].deleted = 0;
+	files[filepos].file_size = 0;
+
+	int lf_len = strlen(local_filename);
+	buf_malloc(&files[filepos].local_filename, sizeof(char), lf_len + 1);
+	memcpy(CAST(char, files[filepos].local_filename.data), local_filename, lf_len);
+	files[filepos].local_filename.len = files[filepos].local_filename.capacity;
+
+	int rem_len = strlen(remote_filename);
+	buf_malloc(&files[filepos].remote_filename, sizeof(char), rem_len + 1);
+	memcpy(CAST(char, files[filepos].remote_filename.data), remote_filename, rem_len);
+	files[filepos].remote_filename.len = files[filepos].remote_filename.capacity;
+
+	files[filepos].updated = 1;
+	files[filepos].perms = perms;
+	pthread_rwlock_init(&files[filepos].rwlock, 0);
+
+	ss_files->files.len++;
+
+	WRITER_EXIT(ss_files);
+}
+
 struct file_metadata* search_file (char* remote_path) {
 	struct file_metadata* f = CAST(struct file_metadata, ss_files->files.data);
 	for (int i = 0; i < ss_files->files.len; i++) {
+		printf("filename: %s\n", CAST(char, f->remote_filename.data));
 		if (!strcmp(remote_path, CAST(char, f->remote_filename.data)))
 			return f;
+		f++;
 	}
 	return NULL;
 }

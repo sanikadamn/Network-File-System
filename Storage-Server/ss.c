@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "../common/thread_pool.h"
+#include "ns.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
