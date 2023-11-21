@@ -48,6 +48,40 @@ void respond_read (int fd) {
     free(filename);
 }
 
+void respond_write (int fd) {
+    printf("responding to read\n");
+    const char filename_header[] = "FILENAME:";
+    int err;
+    char* header = read_line(fd, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char* filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+    const char numbytes_header[] = "NUMBYTES:";
+    header = read_line(fd, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    int filesize;
+    sscanf(header, "NUMBYTES:%d", filesize);
+    free(header);
+
+    printf("filename received: %s\n", filename);
+    printf("filesize received: %d\n", filesize);
+    send(fd, "STATUS:200\n", 12, 0);
+    send(fd, "NUMBYTES:50\n", 13, 0);
+
+    while (1) {
+        send(fd, "a", 1, 0);
+    }
+    free(filename);
+}
+
+
+// TODO: Fix!!
 void respond_info (int fd) {
     printf("responding to read\n");
     const char filename_header[] = "FILENAME:";
@@ -62,10 +96,8 @@ void respond_info (int fd) {
 
     printf("filename received: %s\n", filename);
     send(fd, "STATUS:200\n", 12, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
+    send(fd, "SIZE:50\n", 8, 0);
+    send(fd, "PERM:50\n", 8, 0);
 
     free(filename);
 }
@@ -87,6 +119,6 @@ void respond_client (void *args) {
 
     printf("Action received: <%s>\n", action);
     if (strncmp(action, "read", 4) == 0) respond_read(fd);
-    if (strncmp(action, "info", 4) == 0) respond_read(fd);
+    if (strncmp(action, "info", 4) == 0) respond_info(fd);
     free(action);
 }
