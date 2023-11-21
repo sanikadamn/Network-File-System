@@ -15,6 +15,7 @@ Server* servers[100];
 
 int filecount = 0;
 int servercount = 0;
+int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
 
 void* getFileInfo(void* arg) {
 	// get the file paths from the storage server
@@ -141,3 +142,46 @@ void* connectStorageServer(void* arg) {
 		           (void*)storage);
 	}
 }
+
+// int send_create_delete_to_ss(char *action, char *filepath)
+// {
+// 	// select a storage server to create the file on
+// 	int ss_index = rand() % servercount;
+// 	Server* ss = servers[ss_index];
+// 	// send the create command to the storage server
+	
+// 	packet_a req;
+// 	strcpy(req.action, action);
+// 	strcpy(req.filename, filepath);
+
+// 	char request[len];
+
+// 	sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action,
+// 	        req.filename, &len);
+
+// 	// send request to ss
+// 	if (send(ss->server_socket, request, len, 0) < 0) {
+// 		printf("[-] send error");
+// 		return 0;
+// 	}
+
+// 	// receive feedback from ss
+// 	char* feedback;
+// 	packet_c fb;
+// 	feedback = read_line(ss->server_socket, MAX_FEEDBACK_STRING_LENGTH + 20);
+// 	sscanf(feedback, "STATUS:%d", &fb.status);
+// 	// free(feedback);
+
+// 	if (fb.status == 0) {
+// 		printf("[-] %d operation unsuccessful\n", action);
+// 		return 0;
+// 	}
+
+// 	// send acknowledgement to client
+// 	char ack[100];
+// 	sprintf(ack, "STATUS:%d\n%n", fb.status, &len);
+// 	if (send(NS_client->server_socket, ack, len, 0) < 0) {
+// 		printf("[-] feedback send error");
+// 		return 0;
+// 	}
+// }

@@ -17,7 +17,7 @@
 #include "ns_operations.h"
 #include "client.h"
 
-#define DEFAULT_CLIENT_PORT 2109
+#define DEFAULT_CLIENT_PORT 2110
 #define DEFAULT_NS_PORT 3112
-#define DEFAULT_SS_PORT 4112
+#define DEFAULT_SS_PORT 2109
 #define LOCALHOST "127.0.0.1"

@@ -10,6 +10,7 @@
 
 #include "constants.h"
 #include "filemap.h"
+#include "network.h"
 
 // NOLINTBEGIN(concurrency-*)
 void get_files(buf_t* f, char* path) {
@@ -133,4 +134,13 @@ struct files* init_ss_filemaps(char* path) {
 	get_files(&f->files, path);
 
 	return f;
+}
+
+struct file_metadata* search_file (char* remote_path) {
+	struct file_metadata* f = CAST(struct file_metadata, ss_files->files.data);
+	for (int i = 0; i < ss_files->files.len; i++) {
+		if (!strcmp(remote_path, CAST(char, f->remote_filename.data)))
+			return f;
+	}
+	return NULL;
 }
