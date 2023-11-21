@@ -9,7 +9,7 @@ typedef struct res{
     int server_socket;
 } Response;
 
-void ss_connect(buf_t *ns_res);
+void ss_connect(char *ip, int port);
 void ss_read_req(char *filepath);
 void ss_write_req(char *filepath);
 void ss_info_req(char *filepath);

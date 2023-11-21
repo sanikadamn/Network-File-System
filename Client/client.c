@@ -30,13 +30,13 @@ int init_connection(char *ip, int port)
 int main()
 {
     // initialise connection with the name server
-    init_connection(LOCALHOST, DEFAULT_NS_PORT);
+    // init_connection(LOCALHOST, DEFAULT_NS_PORT);
 
-    buf_t *ns_res = creq_to_ns("REQUEST", "test.txt");
-    if(validate_ns_response(ns_res) == -1)
-        exit(0);
+    // buf_t *ns_res = creq_to_ns("REQUEST", "test.txt");
+    // if(validate_ns_response(ns_res) == -1)
+    //     exit(0);
 
-    ss_connect(ns_res);
+    ss_connect(LOCALHOST, DEFAULT_SS_PORT);
     char *choice = (char *)malloc(sizeof(char) * 10);
     char *filepath = (char *)malloc(sizeof(char) * 1024);
     printf("Enter your choice: ");
