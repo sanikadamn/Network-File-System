@@ -173,11 +173,11 @@ int read_write(int fd, int read)
     int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
     char res[len];
     sprintf(res, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
+    pthread_mutex_unlock(&file_lock);
 
     int send_ret = send(fd, res, len, 0);
     if (send_ret < 0)
         perror("send");
-    pthread_mutex_unlock(&file_lock);
 
     return 0;
 }
@@ -304,7 +304,6 @@ int create_file(int fd)
     }
     // if the file does not exist, send the create command to three storage servers 
     // sort the storage servers based on the filesize
-    pthread_rwlock_rdlock(&servercount_lock);
     for (int i = 0; i < servercount; i++)
     {
         for (int j = 0; j < servercount - i - 1; j++)
@@ -317,7 +316,6 @@ int create_file(int fd)
             }
         }
     }
-    pthread_rwlock_unlock(&servercount_lock);
     // send the create command to the three storage servers
     for (int i = 0; i < COPY_SERVERS; i++)
     {
