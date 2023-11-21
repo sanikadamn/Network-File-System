@@ -56,19 +56,26 @@ char* read_line(int fd, int max_len) {
 int main()
 {
     // initialise connection with the name server
-    // init_connection(LOCALHOST, DEFAULT_NS_PORT);
+    init_connection(LOCALHOST, DEFAULT_NS_PORT);
 
-    // buf_t *ns_res = creq_to_ns("REQUEST", "test.txt");
-    // if(validate_ns_response(ns_res) == -1)
-        // exit(0);
 
-    ss_connect(LOCALHOST, DEFAULT_SS_PORT);
     char *choice = (char *)malloc(sizeof(char) * 10);
     char *filepath = (char *)malloc(sizeof(char) * 1024);
     printf("Enter your choice: ");
     scanf("%s", choice);
     printf("Enter the filepath: ");
     scanf("%s", filepath);
+
+    if(strcasecmp(choice, "read") == 0 || strcasecmp(choice, "write") == 0 || strcasecmp(choice, "info") == 0)
+    {
+        packet_d rd = ns_expect_redirect(choice, filepath);
+        ss_connect(rd.ip, rd.port);
+    }
+    else if(strcasecmp(choice, "create") == 0 || strcasecmp(choice, "delete") == 0)
+    {
+        ns_expect_feedback(choice, filepath);
+    }
+
     if(strcasecmp(choice, "read") == 0)
     {
         ss_read_req(choice, filepath);

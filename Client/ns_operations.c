@@ -40,6 +40,7 @@ packet_d ns_expect_redirect(char *action, char *file)
 
         // print everything
         printf("NS redirected client to SS at %s:%d\n", rd.ip, rd.port);
+        free(redirect);
         return rd;
     }
 }
@@ -55,16 +56,11 @@ void ns_expect_feedback(char *action, char *file)
         sscanf(feedback, "STATUS:%d", &fb.status);
 
         if(fb.status == 0)
-        {
             printf("[-] File not found\n");
-            return;
-        }
-
-        if(fb.status == 1)
-        {
+        else if(fb.status == 1)
             printf("[+] File created/deleted successfully\n");
-            return;
-        }
+        free(feedback);
+        return;
     }
 }
 
