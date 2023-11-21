@@ -50,7 +50,7 @@ void init_server(char* root) {
 	tpool_work(thread_pool, send_heartbeat, (void*)ns);
 
 	struct listen_args args_client = {thread_pool, client_socket};
-	tpool_work(thread_pool, listen_connections, (void*)&args_client);
+	tpool_work(thread_pool, listen_client_connections, (void*)&args_client);
 
 	tpool_wait(thread_pool);
 	printf("No more connections left. Closing the server\n");

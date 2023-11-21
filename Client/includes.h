@@ -21,6 +21,3 @@
 #define DEFAULT_NS_PORT 3112
 #define DEFAULT_SS_PORT 4112
 #define LOCALHOST "127.0.0.1"
-
-extern int client_ns_socket;
-extern int client_ss_socket;
