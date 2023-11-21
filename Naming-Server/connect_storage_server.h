@@ -17,6 +17,7 @@ typedef struct serv{
     int server_socket;
     struct sockaddr_in server_addr;
     uint64_t filesize;
+    pthread_mutex_t ss_lock;
 } Server;
 
 typedef struct file_info{
@@ -37,7 +38,6 @@ extern tpool_t* thread_pool;
 extern Server *NS_storage;
 extern Server *NS_client;
 extern Server *servers[100];
-
 
 
 #endif

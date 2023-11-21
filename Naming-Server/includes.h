@@ -24,7 +24,7 @@ extern pthread_rwlock_t servercount_lock;
 #include "connect_storage_server.h"
 #include "client_operations.h"
 #include "pq.h"
-#include "../error_codes.h"
+#include "../common/error_codes.h"
 #include "../common/Structures.h"
 #include "../common/buffer.h"
 #include "../common/packets.h"

@@ -242,6 +242,7 @@ int delete_file(int fd)
             {
                 for (int j = 0; j < COPY_SERVERS; j++)
                 {
+                    // files[i]->on_servers[j]->ser
                     packet_a packet;
                     strcpy(packet.action, "delete");
                     strcpy(packet.filename, filename);
@@ -251,9 +252,11 @@ int delete_file(int fd)
                     char res[len];
                     sprintf(res, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
 
-                    int err = send(files[i]->on_servers[j]->server_socket, res, len, 0);
-                    if (err < 0)
+                    pthread_mutex_lock(&files[i]->on_servers[j]->ss_lock);
+                    int send_ret = send(files[i]->on_servers[j]->server_socket, res, len, 0);
+                    if (send_ret < 0)
                         perror("send");
+                    pthread_mutex_unlock(&files[i]->on_servers[j]->ss_lock);
                 }
             }
         }
@@ -328,12 +331,11 @@ int create_file(int fd)
         char request[len];
         sprintf(request, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
 
-        for (int j = 0; j < COPY_SERVERS; j++)
-        {
-            int err = send(servers[i]->server_socket, request, len, 0);
-            if (err < 0)
-                perror("send");
-        }
+        pthread_mutex_lock(&servers[i]->ss_lock);
+        int err = send(servers[i]->server_socket, request, len, 0);
+        if (err < 0)
+            perror("send");
+        pthread_mutex_unlock(&servers[i]->ss_lock);
     }
 
     pthread_mutex_unlock(&file_lock);

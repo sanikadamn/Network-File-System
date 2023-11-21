@@ -31,7 +31,7 @@ void* getFileInfo(void* arg) {
 		char *ip = read_line(storage->server_socket, 50, &err);
 		if (err == -1) {
 			perror("ns receive");
-			return;
+			return NULL;
 		}
 		char ip_addr[50];
 		sscanf(ip, "IP:%s", ip_addr);
@@ -40,7 +40,7 @@ void* getFileInfo(void* arg) {
 		char *np = read_line(storage->server_socket, 10, &err);
 		if (err == -1) {
 			perror("ns receive");
-			return;
+			return NULL;
 		}
 		int nport;
 		sscanf(np, "NPORT:%d", &nport);
@@ -49,7 +49,7 @@ void* getFileInfo(void* arg) {
 		char *cp = read_line(storage->server_socket, 10, &err);
 		if (err == -1) {
 			perror("ns receive");
-			return;
+			return NULL;
 		}
 		int cport;
 		sscanf(cp, "CPORT:%d", &cport);
@@ -58,7 +58,7 @@ void* getFileInfo(void* arg) {
 		char *nf = read_line(storage->server_socket, 20, &err);
 		if (err == -1) {
 			perror("ns receive");
-			return;
+			return NULL;
 		}
 		int numfiles;
 		sscanf(nf, "NUMFILES:%d", &numfiles);
@@ -69,7 +69,7 @@ void* getFileInfo(void* arg) {
 			char *filename_header = read_line(storage->server_socket, MAX_FILENAME_LENGTH, &err);
 			if (err == -1) {
 				perror("ns receive");
-				return;
+				return NULL;
 			}
 			char filename[MAX_FILENAME_LENGTH];
 			sscanf(filename_header, "FILENAME:%s", filename_header);
@@ -78,7 +78,7 @@ void* getFileInfo(void* arg) {
 			char *fs = read_line(storage->server_socket, 20, &err);
 			if (err == -1) {
 				perror("ns receive");
-				return;
+				return NULL;
 			}
 			int filesize;
 			sscanf(fs, "FILESIZE:%d", &filesize);
@@ -123,7 +123,6 @@ void* getFileInfo(void* arg) {
 				}
 				filecount ++;
 			}
-			int serverindex = -1;
 			for(int i = 0; i < servercount; i++)
 			{
 				if(servers[i]->server_socket == storage->server_socket)
@@ -163,14 +162,13 @@ void* connectStorageServer(void* arg) {
 		// make a thread for the storage server to accept the initial
 		// data
 		Server* storage = (Server*)malloc(sizeof(Server));
-		pthread_rwlock_rdlock(&servercount_lock);
+		pthread_mutex_lock(&file_lock);
         servers[servercount] = malloc(sizeof(Server));
         servers[servercount]->server_socket = connfd;
         servers[servercount]->server_addr = storage_server;
-		pthread_rwlock_unlock(&servercount_lock);
-		pthread_rwlock_wrlock(&servercount_lock);
         servercount++;
-		pthread_rwlock_unlock(&servercount_lock);
+		pthread_mutex_lock(&file_lock);
+		pthread_mutex_init(&storage->ss_lock, NULL);
 		storage->server_socket = connfd;
 		storage->server_addr = storage_server;
 		tpool_work(thread_pool, (void (*)(void*))getFileInfo,
