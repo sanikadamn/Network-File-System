@@ -10,6 +10,8 @@
 #include <netinet/in.h>
 #include "../common/thread_pool.h"
 
+#define MAX_FILES 10000
+
 void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
 
@@ -27,7 +29,7 @@ typedef struct file_info{
 } File;
 
 extern pthread_mutex_t file_lock;
-extern File *files[10000];
+extern File *files[MAX_FILES];
 
 extern int filecount;
 extern int servercount;

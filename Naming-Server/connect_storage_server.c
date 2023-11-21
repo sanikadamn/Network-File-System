@@ -16,8 +16,17 @@ Server* servers[100];
 int filecount = 0;
 int servercount = 0;
 int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
 
-
+void log_it(char *msg)
+{
+	pthread_mutex_lock(&log_lock);
+	FILE *log = fopen("../log.txt", "a");
+	write(log, msg, strlen(msg));
+	write(log, "\n", 1);
+	fclose(log);
+	pthread_mutex_unlock(&log_lock);
+}
 
 void* getFileInfo(void* arg) {
 	// get the file paths from the storage server
@@ -33,6 +42,7 @@ void* getFileInfo(void* arg) {
 			perror("ns receive");
 			return NULL;
 		}
+		log_it(ip);
 		char ip_addr[50];
 		sscanf(ip, "IP:%s", ip_addr);
 		free(ip);
@@ -42,6 +52,7 @@ void* getFileInfo(void* arg) {
 			perror("ns receive");
 			return NULL;
 		}
+		log_it(np);
 		int nport;
 		sscanf(np, "NPORT:%d", &nport);
 		free(np);
@@ -51,6 +62,7 @@ void* getFileInfo(void* arg) {
 			perror("ns receive");
 			return NULL;
 		}
+		log_it(cp);
 		int cport;
 		sscanf(cp, "CPORT:%d", &cport);
 		free(cp);
@@ -60,6 +72,7 @@ void* getFileInfo(void* arg) {
 			perror("ns receive");
 			return NULL;
 		}
+		log_it(nf);
 		int numfiles;
 		sscanf(nf, "NUMFILES:%d", &numfiles);
 		free(nf);
@@ -71,6 +84,7 @@ void* getFileInfo(void* arg) {
 				perror("ns receive");
 				return NULL;
 			}
+			log_it(filename_header);
 			char filename[MAX_FILENAME_LENGTH];
 			sscanf(filename_header, "FILENAME:%s", filename_header);
 			free(filename_header);
@@ -80,6 +94,7 @@ void* getFileInfo(void* arg) {
 				perror("ns receive");
 				return NULL;
 			}
+			log_it(fs);
 			int filesize;
 			sscanf(fs, "FILESIZE:%d", &filesize);
 			free(fs);
@@ -158,6 +173,7 @@ void* connectStorageServer(void* arg) {
 			printf("Connection accepted from %s:%d.\n",
 			       inet_ntoa(storage_server.sin_addr),
 			       ntohs(storage_server.sin_port));
+		log_it(strcat("Connection accepted from ", inet_ntoa(storage_server.sin_addr)));
 
 		// make a thread for the storage server to accept the initial
 		// data

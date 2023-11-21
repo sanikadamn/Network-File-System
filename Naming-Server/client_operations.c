@@ -18,6 +18,18 @@ CPORT:
 **/
 // sending stuff back to client
 
+pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void log_it(char *msg)
+{
+	pthread_mutex_lock(&log_lock);
+	FILE *log = fopen("../log.txt", "a");
+	write(log, msg, strlen(msg));
+	write(log, "\n", 1);
+	fclose(log);
+	pthread_mutex_unlock(&log_lock);
+}
+
 // connect the clients to the naming server
 void *connectClientToNS(void *arg)
 {
@@ -55,6 +67,7 @@ void *clientRequests(void *arg)
         char *header = read_line(client->server_socket, MAX_ACTION_LENGTH + strlen(action_header) + 1, &err);
         if(err == -1)
             perror("[-] client request");
+        log_it(header);
 
         // convert packet to struct
         char *action = malloc(sizeof(char) * MAX_ACTION_LENGTH);
@@ -62,12 +75,14 @@ void *clientRequests(void *arg)
         free(header);
 
         printf("action received: %s\n", action);
+        log_it(action);
         // switch statement to handle the request
         if(strncmp(action, "read", 4) == 0) read_fromfile(client->server_socket);
         else if(strncmp(action, "write", 5) == 0) write_tofile(client->server_socket);
         else if(strncmp(action, "info", 4) == 0) moreinfo_file(client->server_socket);
         else if(strncmp(action, "create", 6) == 0) create_file(client->server_socket);
         else if(strncmp(action, "delete", 6) == 0) delete_file(client->server_socket);
+        else if(strncmp(action, "copy", 4) == 0) copy_file(client->server_socket);
     }
     return NULL;
 }
@@ -113,6 +128,7 @@ int read_write(int fd, int read)
     char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
     if (err == -1)
         perror("client respond");
+    log_it(header);
 
     char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
     sscanf(header, "FILENAME:%s", filename);
@@ -224,6 +240,7 @@ int delete_file(int fd)
     char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
     if (err == -1)
         perror("client respond");
+    log_it(header);
 
     char filename[MAX_FILENAME_LENGTH];
     sscanf(header, "FILENAME:%s", filename);
@@ -305,6 +322,7 @@ int create_file(int fd)
     char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
     if (err == -1)
         perror("client respond");
+    log_it(header);
 
     char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
     sscanf(header, "FILENAME:%s", filename);
@@ -367,3 +385,110 @@ int moreinfo_file(int fd)
 {
     return read_write(fd, 2);
 }
+
+int copy_files(int fd)
+{
+    const char file_name_header[] = "FILENAME:";
+    int err;
+    char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+    log_it(header);
+    char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+    const char destination_name_header[] = "DESTINATION:";
+    char *destination_name = read_line(fd, MAX_FILENAME_LENGTH + strlen(destination_name_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+    log_it(destination_name);
+    char *destination = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(destination_name, "DESTINATION:%s", destination_name);
+    free(destination_name);
+    
+    // ask storage server for contents of the file
+    // have to send COPYIN COPYOUT to the correct storage servers
+    // copyout from the ss that we want to get the file from
+    // copyin to the ss that we want to copy the file to
+
+    // find the file in the file array
+    pthread_mutex_lock(&file_lock);
+    int index = find_file(filename);
+    if (index == -1)
+    {
+        // send error to the client
+        pthread_mutex_unlock(&file_lock);
+        packet_d packet;
+        packet.status = ENOTFOUND;
+        strcpy(packet.ip, "");
+        packet.port = 0;
+        int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+        char request[len];
+        sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
+        printf("File not found\n");
+        int err = send(fd, request, len, 0);
+        if (err < 0)
+            perror("send");
+        return -1;
+    }  
+    // destination is not in the file array
+    // we have to create it
+
+    int dest_ss = rand() % servercount;
+    // send copyout to the ss that has the file
+    packet_a packet;
+    strcpy(packet.action, "COPYOUT");
+    strcpy(packet.filename, filename);
+    packet.numbytes = 0;
+
+    int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+    char request[len];
+    sprintf(request, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
+
+    pthread_mutex_lock(&files[index]->on_servers[0]->ss_lock);
+    int err = send(files[index]->on_servers[0]->server_socket, request, len, 0);
+
+    // receive the file from the ss
+    char data[MAX_STR_LENGTH];
+    while(1)
+    {
+        int bytes = recv(files[index]->on_servers[0]->server_socket, data, MAX_STR_LENGTH, 0);
+        if(bytes < 0)
+        {
+            perror("[-] recv error");
+            exit(0);
+        }
+        else if(bytes == 0)
+            break;
+        else
+        {
+            // send the file to the destination ss
+            packet_a packet;
+            strcpy(packet.action, "COPYIN");
+            strcpy(packet.filename, destination);
+            packet.numbytes = 0;
+
+            int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+            char request[len];
+            sprintf(request, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
+
+            pthread_mutex_lock(&servers[dest_ss]->ss_lock);
+            int err = send(servers[dest_ss]->server_socket, request, len, 0);
+            if (err < 0)
+                perror("send");
+            pthread_mutex_unlock(&servers[dest_ss]->ss_lock);
+
+            // send the file to the destination ss
+            int send_ret = send(servers[dest_ss]->server_socket, data, bytes, 0);
+            if (send_ret < 0)
+                perror("send");
+            log_it(data);
+        }
+    }
+    pthread_mutex_unlock(&files[index]->on_servers[0]->ss_lock);
+
+}
+
+
+// send the create thing to 3 servers only when it is available 
