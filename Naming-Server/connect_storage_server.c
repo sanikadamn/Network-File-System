@@ -130,10 +130,14 @@ void* connectStorageServer(void* arg) {
 		// make a thread for the storage server to accept the initial
 		// data
 		Server* storage = (Server*)malloc(sizeof(Server));
+		pthread_rwlock_rdlock(&servercount_lock);
         servers[servercount] = malloc(sizeof(Server));
         servers[servercount]->server_socket = connfd;
         servers[servercount]->server_addr = storage_server;
+		pthread_rwlock_unlock(&servercount_lock);
+		pthread_rwlock_wrlock(&servercount_lock);
         servercount++;
+		pthread_rwlock_unlock(&servercount_lock);
 		storage->server_socket = connfd;
 		storage->server_addr = storage_server;
 		tpool_work(thread_pool, (void (*)(void*))getFileInfo,
