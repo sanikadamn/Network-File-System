@@ -14,9 +14,9 @@ void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
 
 typedef struct file_info{
-    char ss_ip[3][50];
-    char ns_port[3][5];
-    char client_port[3][5];
+    int ss_ip[3][50];
+    int ns_port[3];
+    int client_port[3];
     int num_files;
     char filename[1024];
     uint64_t filesize;

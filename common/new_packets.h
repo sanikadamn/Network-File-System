@@ -29,6 +29,7 @@ typedef struct {
 ** redirect packets (from ns to ss)
 */
 typedef struct {
+    int status;
     char ip[MAX_IP_LENGTH];
     int port;
 } packet_d;

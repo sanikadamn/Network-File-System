@@ -20,3 +20,4 @@
 #include "../common/Structures.h"
 #include "../common/buffer.h"
 #include "../common/packets.h"
+#include "../common/new_packets.h"
