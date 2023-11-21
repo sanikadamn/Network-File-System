@@ -91,7 +91,7 @@ i32 read_i32(int fd, char* hname) {
 	buf_t header;
 	readline(fd, &header);
 
-	char* hval_str = strstr(CAST(char, header.data), hname);
+	char* hval_str = strstr(CAST(char, header.data), ":") + 1;
 	if (hval_str == NULL) {
 		return -1;
 	}
@@ -105,7 +105,7 @@ i64 read_i64(int fd, char* hname) {
 	buf_t header;
 	readline(fd, &header);
 
-	char* hval_str = strstr(CAST(char, header.data), hname);
+	char* hval_str = strstr(CAST(char, header.data), ":") + 1;
 	if (hval_str == NULL) {
 		return -1;
 	}
@@ -125,13 +125,13 @@ buf_t* read_str(int fd, const char* hname) {
 	buf_malloc(hval, sizeof(char), (header.len - hname_len + 1));
 	hval->len = (header.len - hname_len + 1);
 
-	char* hval_str = strstr(CAST(char, header.data), hname);
+	char* hval_str = strstr(CAST(char, header.data), ":") + 1;
 	if (hval_str == NULL) {
 		hval->len = 0;
 		return hval;
 	}
 
-	sscanf(CAST(char, header.data), "%s", CAST(char, hval->data));
+	strcpy(hval_str, CAST(char, hval->data));
 
 	return hval;
 }
