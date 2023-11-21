@@ -2,7 +2,7 @@
 #define NEW_PACKETS_H
 /* going to define all the new packets here */
 #include "globals.h"
-#include "../error_codes.h"
+#include "error_codes.h"
 /* type A
 ** broad c->ns packets
 ** they work for: read, write, info, create, delete
