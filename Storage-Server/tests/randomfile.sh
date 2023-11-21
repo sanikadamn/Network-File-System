@@ -14,6 +14,8 @@ usage () {
 i=1
 limit=$2
 while [ $i -le $limit ]; do
-    dd if=/dev/urandom of="$1/$i" bs=1 count=$(( RANDOM + 1024 ))
+    filename=$(echo -en "$i" | xxd -p)
+    echo $filename
+    dd if=/dev/urandom of="$1/$filename" bs=1 count=$(( RANDOM + 1024 ))
     i=$(($i+1))
 done
