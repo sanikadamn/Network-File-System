@@ -211,6 +211,12 @@ int delete_file(Request *req, Server *client)
     {        
         if (strncmp(files[i]->filename, req->path, strlen(req->path)) == 0)
         {
+            // check if all the servers are not -1
+            if (files[i]->storageserver_socket[0] == -1 || files[i]->storageserver_socket[1] == -1 || files[i]->storageserver_socket[2] == -1)
+            {
+                // send error to the client
+                continue;
+            }
             packet_a packet;
             strcpy(packet.action, "DELETE");
             strcpy(packet.filename, req->path);
@@ -221,9 +227,12 @@ int delete_file(Request *req, Server *client)
             sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n", packet.action, packet.filename, packet.numbytes);
             files[i]->deleted = 1;
             // send delete command to the storage server
-            int err = send(files[i]->storageserver_socket[0], request, len, 0); 
-            if (err < 0)
-                perror("send");
+            for (int j = 0; j < 3; j++)
+            {
+                int err = send(files[i]->storageserver_socket[j], request, len, 0); 
+                if (err < 0)
+                    perror("send");
+            }
         }
     }
     pthread_mutex_unlock(&file_lock);
