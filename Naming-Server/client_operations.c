@@ -179,8 +179,8 @@ int read_write(int fd, int read)
     char res[len];
     sprintf(res, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
 
-    int err = send(fd, res, len, 0);
-    if (err < 0)
+    int send_ret = send(fd, res, len, 0);
+    if (send_ret < 0)
         perror("send");
     pthread_mutex_unlock(&file_lock);
 
@@ -249,8 +249,8 @@ int delete_file(int fd)
     int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
     char request[len];
     sprintf(request, "STATUS:%d\n", fb.status);
-    int err = send(fd, request, len, 0);
-    if (err < 0)
+    int send_ret = send(fd, request, len, 0);
+    if (send_ret < 0)
         perror("send");
     pthread_mutex_unlock(&file_lock);
     return 0;
@@ -279,13 +279,14 @@ int create_file(int fd)
         packet.port = 0;
 
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
-        char request[len];
-        sprintf(request, "STATUS:%d\n", packet.status, packet.ip, packet.port);
-        if (send(fd, request, len, 0) < 0)
+        char res[len];
+        sprintf(res, "STATUS:%d\n", packet.status);
+        if (send(fd, res, len, 0) < 0)
             perror("send");
     }
     // if the file does not exist, send the create command to three storage servers 
     // sort the storage servers based on the filesize
+    pthread_rwlock_rdlock(&servercount_lock);
     for (int i = 0; i < servercount; i++)
     {
         for (int j = 0; j < servercount - i - 1; j++)
@@ -298,6 +299,7 @@ int create_file(int fd)
             }
         }
     }
+    pthread_rwlock_unlock(&servercount_lock);
     // send the create command to the three storage servers
     for (int i = 0; i < COPY_SERVERS; i++)
     {

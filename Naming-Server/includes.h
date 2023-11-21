@@ -19,6 +19,8 @@
 #define COPY_SERVERS 3
 #endif
 
+extern pthread_rwlock_t servercount_lock;
+
 #include "connect_storage_server.h"
 #include "client_operations.h"
 #include "pq.h"
