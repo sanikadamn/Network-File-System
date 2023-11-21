@@ -18,6 +18,7 @@ int servercount = 0;
 int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
 
 void* getFileInfo(void* arg) {
+	printf("Here\n");
 	// get the file paths from the storage server
 	// assuming that the storage server sends the files as an array of file
 	// paths
@@ -50,10 +51,20 @@ void* getFileInfo(void* arg) {
 		int file_exists = 0;
         pthread_mutex_lock(&file_lock);
 		for (int i = 0; i < filecount; i++) {
-			if (strcmp(files[i]->filename,
-			           CAST(char, filename->data)) == 0) {
+			if (strcmp(files[i]->filename, CAST(char, filename->data)) == 0)
+			{
+				int pos = -1;
 				for (int j = 0; j < COPY_SERVERS; j++) {
-					if (files[i]->storageserver_socket[j] == -1) 
+					// check if the storage server already exists
+					if (files[i]->storageserver_socket[j] == storage->server_socket)
+					{
+						pos = j;
+						break;
+					}
+				}
+				if(pos == -1)
+				for (int j = 0; j < COPY_SERVERS; j++) {
+				if (files[i]->storageserver_socket[j] == -1) 
                     {
                         strcpy(files[i]->ss_ip[j], CAST(char, ip->data));
 						files[i]->ns_port[j] = nport;
@@ -102,6 +113,7 @@ void* getFileInfo(void* arg) {
         numberfiles++;
         if(numberfiles == numfiles)
             break;
+		print("%d\n", filecount);
 	}
 
 	return NULL;

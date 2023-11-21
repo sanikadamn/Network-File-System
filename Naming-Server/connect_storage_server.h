@@ -23,11 +23,6 @@ typedef struct file_info{
     struct sockaddr_in storageserver[COPY_SERVERS];
     int storageserver_socket[COPY_SERVERS];
 
-
-
-
-    int write_perm; // 0 for no, 1 for yes
-    int read_perm;  // 0 for no, 1 for yes
     int deleted;
 } File;
 

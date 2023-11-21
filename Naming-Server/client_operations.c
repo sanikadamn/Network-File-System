@@ -153,8 +153,7 @@ int read_write(Request *req, Server *client, int read)
         if (err < 0)
             perror("send");
     }
-    if(((read == 0 && files[index]->write_perm == 0) || (read == 1 && files[index]->read_perm == 0)) || \
-    ((files[index]->storageserver_socket[0] == -1 || files[index]->storageserver_socket[1] == -1 || files[index]->storageserver_socket[2] == -1) && read == 1))
+    if((files[index]->storageserver_socket[0] == -1 || files[index]->storageserver_socket[1] == -1 || files[index]->storageserver_socket[2] == -1) && read == 1)
     {
         // send error to the client
         pthread_mutex_unlock(&file_lock);
