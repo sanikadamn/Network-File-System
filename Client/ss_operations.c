@@ -51,7 +51,7 @@ void ss_read_req(char *action, char *file)
     sscanf(feedback, "STATUS:%d", &fb.status);
     // free(feedback);
 
-    if (fb.status == 0)
+    if (fb.status == ENOTFOUND)
     {
         printf("[-] File not found\n");
         return;

@@ -3,7 +3,10 @@
 Server *NS_storage;
 Server *NS_client;
 tpool_t* thread_pool;
-pthread_rwlock_t servercount_lock;
+
+File *lru_cache[LRU_SIZE];
+int lru_index = 0;
+pthread_mutex_t lru_mutex;
 
 int main()
 {
@@ -11,8 +14,7 @@ int main()
     int server_ss_socket, server_client_socket;
     struct sockaddr_in server_ss_addr, server_client_addr;
 
-    // initialize rwlock
-    pthread_rwlock_init(&servercount_lock, NULL);
+    pthread_mutex_init(&lru_mutex, NULL);
     
     server_ss_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(server_ss_socket < 0)

@@ -74,11 +74,32 @@ void *clientRequests(void *arg)
 
 int find_file(char path[])
 {
-    // return the index in the array of the file
+    // check in the LRU cache first
+    pthread_mutex_lock(&lru_mutex);
+    for (int i = 0; i < LRU_SIZE; i++)
+    {
+        if (lru_cache[i] != NULL && strcmp(lru_cache[i]->filename, path) == 0)
+        {
+            pthread_mutex_unlock(&lru_mutex);
+            return i;
+        }
+    }
+    pthread_mutex_unlock(&lru_mutex);
+    // if not found in LRU, search list and add to LRU
     for (int i = 0; i < filecount; i++)
     {
         if (strcmp(files[i]->filename, path) == 0)
+        {
+            pthread_mutex_lock(&lru_mutex);
+            // most recent first
+            for (int j = LRU_SIZE - 1; j > 0; j--)
+            {
+                lru_cache[j] = lru_cache[j - 1];
+            }
+            lru_cache[0] = files[i];
+            pthread_mutex_unlock(&lru_mutex);
             return i;
+        }
     }
     return -1;
 }
