@@ -59,7 +59,6 @@ void ss_read_req(char *action, char *file)
     // char *feedback;
     feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
     sscanf(feedback, "NUMBYTES:%d", &fb.numbytes);
-    free(feedback);
 
     // print everything
     printf("request that was sent to ss: %s\n", request);
@@ -68,18 +67,18 @@ void ss_read_req(char *action, char *file)
     printf("numbytes: %d\n", fb.numbytes);
 
     // receive data from ss and print to stdout
-    // char data[MAX_STR_LENGTH];
-    // while(1)
-    // {
-    //     int bytes = recv(client_ss_socket, data, MAX_STR_LENGTH, 0);
-    //     if(bytes < 0)
-    //     {
-    //         perror("[-] recv error");
-    //         exit(0);
-    //     }
-    //     else if(bytes == 0)
-    //         break;
-    //     else
-    //         printf("%s", data);
-    // }
+    char data[MAX_STR_LENGTH];
+    while(1)
+    {
+        int bytes = recv(client_ss_socket, data, MAX_STR_LENGTH - 1, 0);
+        if(bytes < 0)
+        {
+            perror("[-] recv error");
+            exit(0);
+        }
+        else if(bytes == 0)
+            break;
+        else
+            printf("%s", data);
+    }
 }
