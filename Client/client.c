@@ -34,7 +34,10 @@ char* read_line(int fd, int max_len) {
     if (str == NULL) return str;
     char* head = str;
     int err;
+    int err;
 	char ch;
+	while ((err = recv(fd, &ch, sizeof(char), 0)) > 0) {
+        if(err < 0)
 	while ((err = recv(fd, &ch, sizeof(char), 0)) > 0) {
         if(err < 0)
         {
@@ -77,8 +80,8 @@ int main()
     // {
     //     ss_write_req(choice, filepath);
     // }
-    // else if(strcmp(choice, "info") == 0)
-    // {
-    //     ss_info_req(choice, filepath);
-    // }
+    else if(strcmp(choice, "info") == 0)
+    {
+        ss_info_req(choice, filepath);
+    }
 }

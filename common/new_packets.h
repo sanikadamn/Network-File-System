@@ -23,6 +23,7 @@ typedef struct {
 typedef struct {
     int status; // specify different codes depending on the sender, receiver, and action for which feedback is being sent
     int numbytes; // required only for read request's feedback
+    int permissions;
 } packet_c;
 
 /* type D
