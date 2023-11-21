@@ -22,7 +22,7 @@ SRCS = \
 	../common/thread_pool.c \
 	../common/buffer.c \
 	ss_operations.c \
-	# ns_operations.c \
+	ns_operations.c \
 
 OBJS = $(SRCS:.c=.o)
 

@@ -33,7 +33,7 @@ void *connectClientToNS(void *arg)
             perror("accept");
         }
         else
-            printf("Connection accepted from %s:%d.\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
+            printf("Connection accepted from client %s:%d.\n", inet_ntoa(client_addr.sin_addr), ntohs(client_addr.sin_port));
 
         // make a thread for the client to be able to send requests
         Server *client = (Server *)malloc(sizeof(Server));
