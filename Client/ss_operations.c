@@ -139,3 +139,34 @@ void ss_info_req(char *action, char *file)
     else
         printf("%s", data);
 }
+
+void ss_write_req(char *action, char *file)
+{
+    packet_a req;
+    strcpy(req.action, action);
+    strcpy(req.filename, file);
+
+    char request[len];
+
+    sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n%n", req.action, req.filename, &len);
+    req.numbytes = 1000;
+
+
+    // send request to ss
+    if(send(client_ss_socket, request, len, 0) < 0)
+    {
+        perror("[-] send error in request");
+        exit(0);
+    }
+
+    // send data to ss 
+    char data[MAX_STR_LENGTH];
+    for(int i=0; i<req.numbytes; i++)
+        data[i] = 'a';
+    data[req.numbytes] = '\0';
+    if(send(client_ss_socket, data, req.numbytes, 0) < 0)
+    {
+        perror("[-] send error in data");
+        exit(0);
+    }
+}

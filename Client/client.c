@@ -69,15 +69,15 @@ int main()
     scanf("%s", choice);
     printf("Enter the filepath: ");
     scanf("%s", filepath);
-    if(strcmp(choice, "read") == 0)
+    if(strcasecmp(choice, "read") == 0)
     {
         ss_read_req(choice, filepath);
     }
-    // else if(strcmp(choice, "write") == 0)
-    // {
-    //     ss_write_req(choice, filepath);
-    // }
-    else if(strcmp(choice, "info") == 0)
+    else if(strcmp(choice, "write") == 0)
+    {
+        ss_write_req(choice, filepath);
+    }
+    else if(strcasecmp(choice, "info") == 0)
     {
         ss_info_req(choice, filepath);
     }
