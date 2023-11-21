@@ -148,8 +148,8 @@ void ss_write_req(char *action, char *file)
 
     char request[len];
 
-    sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n%n", req.action, req.filename, &len);
     req.numbytes = 1000;
+    sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n%n", req.action, req.filename, req.numbytes, &len);
 
 
     // send request to ss

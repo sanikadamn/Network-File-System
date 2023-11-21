@@ -49,7 +49,7 @@ void respond_read (int fd) {
 }
 
 void respond_write (int fd) {
-    printf("responding to read\n");
+    printf("responding to write\n");
     const char filename_header[] = "FILENAME:";
     int err;
     char* header = read_line(fd, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
@@ -65,18 +65,21 @@ void respond_write (int fd) {
     if (err == -1)
         perror("client respond");
 
+    printf("filename received: %s\n", filename);
     int filesize;
-    sscanf(header, "NUMBYTES:%d", filesize);
+    sscanf(header, "NUMBYTES:%d", &filesize);
     free(header);
 
     printf("filename received: %s\n", filename);
     printf("filesize received: %d\n", filesize);
-    send(fd, "STATUS:200\n", 12, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
 
-    while (1) {
-        send(fd, "a", 1, 0);
+    char buffer[BUFSIZ];
+    while (filesize < BUFSIZ && !err) {
+        err = recv(fd, buffer, BUFSIZ, 0);
+        printf("buffer: %s\n", buffer);
     }
+    err = recv(fd, buffer, BUFSIZ, 0);
+    printf("buffer: %s\n", buffer);
     free(filename);
 }
 
@@ -120,5 +123,6 @@ void respond_client (void *args) {
     printf("Action received: <%s>\n", action);
     if (strncmp(action, "read", 4) == 0) respond_read(fd);
     if (strncmp(action, "info", 4) == 0) respond_info(fd);
+    if (strncmp(action, "write", 4) == 0) respond_write(fd);
     free(action);
 }
