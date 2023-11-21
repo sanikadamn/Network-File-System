@@ -16,43 +16,56 @@
 ** CPORT:
 **/
 
-
-buf_t *creq_to_ns(char *req, char *file)
+packet_d ns_expect_redirect(char *action, char *file)
 {
-    // send a client request to the name server
-    buf_t *request;
-    buf_malloc(request, sizeof(char), 2);
-    (*request).len = 2;
-    
-    // add headers
-    add_str_header(&request[0], "REQUEST:", req);
-    add_str_header(&request[1], "FILENAME:", file);
-    
-
-    // coalesce the buffers
-    buf_t *packet;
-    coalsce_buffers(packet, request);
-
-    // send to name server
-    int send_ret = send(client_ns_socket, CAST(char, request->data), request->len, 0);
-    if(send_ret < 0)
+    if(strcasecmp(action, "read") == 0 || strcasecmp(action, "write") == 0 || strcasecmp(action, "info") == 0)
     {
-        perror("[-] error sending request to name server");
-        exit(0);
-    }
+        // expect a redirect packet (type d)
+        char *redirect;
+        packet_d rd = {0};
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "STATUS:%d", &rd.status);
 
-    // receive response from name server
-    buf_t *response;
-    buf_malloc(response, sizeof(char), 1024);
-    int recv_ret = recv(client_ns_socket, CAST(char, response), 1024, MSG_PEEK);
-    if(recv_ret < 0)
+        if(rd.status == 0)
+        {
+            printf("[-] File not found\n");
+            return rd;
+        }
+
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "IP:%s", rd.ip);
+
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "PORT:%d", &rd.port);
+
+        // print everything
+        printf("NS redirected client to SS at %s:%d\n", rd.ip, rd.port);
+        return rd;
+    }
+}
+
+void ns_expect_feedback(char *action, char *file)
+{
+    if(strcasecmp(action, "create") == 0 || strcasecmp(action, "delete") == 0)
     {
-        perror("[-] error receiving response from name server");
-        exit(0);
-    }
+        // expect a feedback packet (type c)
+        char *feedback;
+        packet_c fb = {0};
+        feedback = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(feedback, "STATUS:%d", &fb.status);
 
-    // return the response
-    return response;
+        if(fb.status == 0)
+        {
+            printf("[-] File not found\n");
+            return;
+        }
+
+        if(fb.status == 1)
+        {
+            printf("[+] File created/deleted successfully\n");
+            return;
+        }
+    }
 }
 
 // int validate_ns_response(buf_t *response)

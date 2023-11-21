@@ -10,6 +10,7 @@ typedef struct {
     char action[MAX_ACTION_LENGTH];
     char filename[MAX_FILENAME_LENGTH];
     int numbytes; // required only for write request
+    int permissions; // required only for create request
 } packet_a;
 
 /* type B
