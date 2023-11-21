@@ -227,7 +227,7 @@ int delete_file(Request *req, Server *client)
             sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n", packet.action, packet.filename, packet.numbytes);
             files[i]->deleted = 1;
             // send delete command to the storage server
-            for (int j = 0; j < 3; j++)
+            for (int j = 0; j < COPY_SERVERS; j++)
             {
                 int err = send(files[i]->storageserver_socket[j], request, len, 0); 
                 if (err < 0)
@@ -244,21 +244,18 @@ int create_file(Request *req, Server *client)
     // for creating, check if the file already exists, if it does, send error to the client
     pthread_mutex_lock(&file_lock);
     int index = find_file(req->path);
-    buf_t packet;
-    struct buffer buf;
     if (index != -1)
     {
-        buf_malloc(&packet, sizeof(str_t), 3);
-        // send error to the client
-        pthread_mutex_unlock(&file_lock);
-        add_int_header(&CAST(str_t, packet.data)[0], "STATUS:", EINVAL);
-        add_str_header(&CAST(str_t, packet.data)[1], "IP:", "");
-        add_str_header(&CAST(str_t, packet.data)[2], "PORT:", "");
-        coalsce_buffers(&buf, &packet);
-        int err = send(client->server_socket, &buf, sizeof(buf_t), 0);
-        if (err < 0)
+        packet_d packet;
+        packet.status = EINVAL;
+        strcpy(packet.ip, "");
+        packet.port = 0;
+
+        int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+        char request[len];
+        sprintf(request, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
+        if (send(client->server_socket, request, len, 0) < 0)
             perror("send");
-        return -1;
     }
     // if the file does not exist, send the create command to three storage servers 
     // sort the storage servers based on the filesize
@@ -275,15 +272,20 @@ int create_file(Request *req, Server *client)
         }
     }
     // send the create command to the three storage servers
-    for (int i = 0; i < 3; i++)
+    for (int i = 0; i < COPY_SERVERS; i++)
     {
-        buf_malloc(&packet, sizeof(str_t), 2);
-        add_str_header(&CAST(str_t, packet.data)[0], "STATUS:", "CREATE");
-        add_str_header(&CAST(str_t, packet.data)[1], "FILENAME:", req->path);
-        coalsce_buffers(&buf, &packet);
-        for (int j = 0; j < 3; j++)
+        packet_a packet;
+        strcpy(packet.action, "CREATE");
+        strcpy(packet.filename, req->path);
+        packet.numbytes = 0;
+
+        int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+        char request[len];
+        sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n", packet.action, packet.filename, packet.numbytes);
+
+        for (int j = 0; j < COPY_SERVERS; j++)
         {
-            int err = send(servers[i]->server_socket, &buf, sizeof(buf_t), 0);
+            int err = send(servers[i]->server_socket, request, len, 0);
             if (err < 0)
                 perror("send");
         }

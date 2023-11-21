@@ -14,14 +14,14 @@ void *connectStorageServer(void *arg);
 void *getFileInfo(void *arg);
 
 typedef struct file_info{
-    int ss_ip[3][50];
-    int ns_port[3];
-    int client_port[3];
+    char ss_ip[COPY_SERVERS][50];
+    int ns_port[COPY_SERVERS];
+    int client_port[COPY_SERVERS];
     int num_files;
     char filename[1024];
     uint64_t filesize;
-    struct sockaddr_in storageserver[3];
-    int storageserver_socket[3];
+    struct sockaddr_in storageserver[COPY_SERVERS];
+    int storageserver_socket[COPY_SERVERS];
 
 
 

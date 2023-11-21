@@ -40,8 +40,8 @@ void* getFileInfo(void* arg) {
 		}
 		// convert packet to struct
 		buf_t* ip = read_str(storage->server_socket, "IP:");
-		buf_t* nport = read_str(storage->server_socket, "NPORT:");
-		buf_t* cport = read_str(storage->server_socket, "CPORT:");
+		i32 nport = read_i32(storage->server_socket, "NPORT:");
+		i32 cport = read_i32(storage->server_socket, "CPORT:");
 		i32 numfiles = read_i32(storage->server_socket, "NUMFILES:");
 		buf_t* filename = read_str(storage->server_socket, "FILENAME:");
 		i64 filesize = read_i64(storage->server_socket, "FILESIZE:");
@@ -52,12 +52,12 @@ void* getFileInfo(void* arg) {
 		for (int i = 0; i < filecount; i++) {
 			if (strcmp(files[i]->filename,
 			           CAST(char, filename->data)) == 0) {
-				for (int j = 0; j < 3; j++) {
+				for (int j = 0; j < COPY_SERVERS; j++) {
 					if (files[i]->storageserver_socket[j] == -1) 
                     {
                         strcpy(files[i]->ss_ip[j], CAST(char, ip->data));
-                        strcpy(files[i]->ns_port[j], CAST(char, nport->data));
-                        strcpy(files[i]->client_port[j], CAST(char, cport->data));
+						files[i]->ns_port[j] = nport;
+						files[i]->client_port[j] = cport;
 						files[i]->storageserver_socket[j] = storage->server_socket;
 						files[i]->storageserver[j] = storage->server_addr;
 						break;
@@ -71,15 +71,13 @@ void* getFileInfo(void* arg) {
 
 			// store this file in the file array
 			strcpy(files[filecount]->ss_ip[0], CAST(char, ip->data));
-			strcpy(files[filecount]->ns_port[0],
-			       CAST(char, nport->data));
-			strcpy(files[filecount]->client_port[0],
-			       CAST(char, cport->data));
+			files[filecount]->ns_port[0] = nport;
+			files[filecount]->client_port[0] = cport;
 			files[filecount]->num_files = numfiles;
 			strcpy(files[filecount]->filename,
 			       CAST(char, filename->data));
 			files[filecount]->filesize = filesize;
-			for (int i = 0; i < 3; i++)
+			for (int i = 0; i < COPY_SERVERS; i++)
 				files[filecount]->storageserver_socket[i] = -1;
 
 			files[filecount]->storageserver[0] =

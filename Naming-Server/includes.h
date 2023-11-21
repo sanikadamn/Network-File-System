@@ -14,6 +14,10 @@
 #define NUM_THREADS 50
 #endif
 
+#ifndef COPY_SERVERS
+#define COPY_SERVERS 3
+#endif
+
 #include "connect_storage_server.h"
 #include "client_operations.h"
 #include "../error_codes.h"
