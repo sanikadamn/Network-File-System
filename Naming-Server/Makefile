@@ -22,6 +22,7 @@ SRCS = \
 	../common/thread_pool.c \
 	client_operations.c \
 	connect_storage_server.c \
+	pq.c \
 	../common/packets.c \
 	../common/buffer.c \
 

@@ -6,6 +6,7 @@
 #include <sys/socket.h>
 #include <netinet/ip.h>
 #include <arpa/inet.h>
+#include <limits.h>
 
 #define DEFAULT_NS_SS_PORT 3112
 #define DEFAULT_NS_CLIENT_PORT 3113
@@ -20,6 +21,7 @@
 
 #include "connect_storage_server.h"
 #include "client_operations.h"
+#include "pq.h"
 #include "../error_codes.h"
 #include "../common/Structures.h"
 #include "../common/buffer.h"
