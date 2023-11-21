@@ -1,8 +1,10 @@
 #include "includes.h"
 
-struct sockaddr_in client_addr;
+int client_ns_socket = -1;
+int client_ss_socket = -1;
+struct sockaddr_in client_addr = {0};
 
-int init_connection(char *ip, int port)
+void init_connection(char *ip, int port)
 {
     client_ns_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(client_ns_socket < 0)
@@ -27,6 +29,30 @@ int init_connection(char *ip, int port)
         printf("[+] connected to the server.\n");
 }
 
+char* read_line(int fd, int max_len) {
+    char* str = malloc(sizeof(char) * max_len);
+    if (str == NULL) return str;
+    char* head = str;
+    int* err;
+	char ch;
+	while ((*err = recv(fd, &ch, sizeof(char), 0)) > 0) {
+        if(*err < 0)
+        {
+            perror("[-] recv error");
+            exit(0);
+        }
+		if (ch == '\n' || (head - str) == max_len) {
+            *head = '\0';
+			break;
+		}
+        *head++ = ch;
+	}
+
+    int len = head - str;
+    str = realloc(str, len);
+    return str;
+}
+
 int main()
 {
     // initialise connection with the name server
@@ -34,7 +60,7 @@ int main()
 
     // buf_t *ns_res = creq_to_ns("REQUEST", "test.txt");
     // if(validate_ns_response(ns_res) == -1)
-    //     exit(0);
+        // exit(0);
 
     ss_connect(LOCALHOST, DEFAULT_SS_PORT);
     char *choice = (char *)malloc(sizeof(char) * 10);
@@ -45,14 +71,14 @@ int main()
     scanf("%s", filepath);
     if(strcmp(choice, "read") == 0)
     {
-        ss_read_req(filepath);
+        ss_read_req(choice, filepath);
     }
-    else if(strcmp(choice, "write") == 0)
-    {
-        ss_write_req(filepath);
-    }
-    else if(strcmp(choice, "info") == 0)
-    {
-        ss_info_req(filepath);
-    }
+    // else if(strcmp(choice, "write") == 0)
+    // {
+    //     ss_write_req(choice, filepath);
+    // }
+    // else if(strcmp(choice, "info") == 0)
+    // {
+    //     ss_info_req(choice, filepath);
+    // }
 }

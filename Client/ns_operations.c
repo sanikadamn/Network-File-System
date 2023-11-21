@@ -55,30 +55,30 @@ buf_t *creq_to_ns(char *req, char *file)
     return response;
 }
 
-int validate_ns_response(buf_t *response)
-{
-    int status = read_i32(client_ns_socket, "STATUS:");
-    if(status == ENOSERV)
-    {
-        printf("[-] no servers exist.\n");
-    }
-    else if(status == ENOTFOUND)
-    {
-        printf("[-] file not found.\n");
-    }
-    else if(status == ENOPERM)
-    {
-        printf("[-] you do not have permission to access this file.\n");
-    }
-    else if(status == NO_ERROR)
-    {
-        printf("[+] file found.\n");
-        return 0;
-    }
-    else
-    {
-        printf("[-] unknown error.\n");
-    }
+// int validate_ns_response(buf_t *response)
+// {
+//     int status = read_i32(client_ns_socket, "STATUS:");
+//     if(status == ENOSERV)
+//     {
+//         printf("[-] no servers exist.\n");
+//     }
+//     else if(status == ENOTFOUND)
+//     {
+//         printf("[-] file not found.\n");
+//     }
+//     else if(status == ENOPERM)
+//     {
+//         printf("[-] you do not have permission to access this file.\n");
+//     }
+//     else if(status == NO_ERROR)
+//     {
+//         printf("[+] file found.\n");
+//         return 0;
+//     }
+//     else
+//     {
+//         printf("[-] unknown error.\n");
+//     }
 
-    return -1;
-}
+//     return -1;
+// }
