@@ -78,9 +78,9 @@ void ns_expect_feedback(char *action, char *file)
         if(send(client_ns_socket, request, len, 0) < 0)
         {
             perror("[-] send error");
-            exit(0);
+            return;
         }
-        
+
         // expect a feedback packet (type c)
         char *feedback;
         packet_c fb = {0};
