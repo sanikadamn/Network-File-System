@@ -18,6 +18,25 @@ CPORT:
 **/
 // sending stuff back to client
 
+char* read_line(int fd, int max_len, int* err) {
+    char* str = malloc(sizeof(char) * (max_len + 1));
+    if (str == NULL) return str;
+    char* head = str;
+
+	char ch;
+	while ((*err = recv(fd, &ch, sizeof(char), 0)) > 0) {
+		if (ch == '\n' || (head - str) == max_len) {
+            *head++ = '\0';
+			break;
+		}
+        *head++ = ch;
+	}
+
+    int len = head - str;
+    str = realloc(str, len);
+    return str;
+}
+
 
 // connect the clients to the naming server
 void *connectClientToNS(void *arg)
@@ -51,53 +70,20 @@ void *clientRequests(void *arg)
     while(1)
     {
         // get the request from the client
-        buf_t client_packet;
-        buf_malloc(&client_packet, sizeof(str_t), 2048);
-        Request *req = (Request *)malloc(sizeof(Request));
-
-        int bytes_read = recv(client->server_socket, client_packet.data, sizeof(buf_t), MSG_PEEK);
-        if (bytes_read < 0)
-        {
-            perror("read");
-            break;
-        }
-        else if (bytes_read == 0)
-        {
-            printf("Connection closed by client\n");
-            break;
-        }
+        const char action_header[] = "ACTION:";
+        int err;
+        char *header = read_line(client->server_socket, MAX_ACTION_LENGTH + strlen(action_header) + 1, &err);
+        if(err == -1)
+            perror("[-] client request");
 
         // convert packet to struct
-        i32 req_type = read_i32(client->server_socket, "REQUEST:");
-        buf_t *path = read_str(client->server_socket, "FILENAME:");
-        buf_t *location = read_str(client->server_socket, "DESTINATION:");
-        // store the request in the request struct
-        req->req_type = req_type;
-        strcpy(req->path, CAST(char, path->data));
-        strcpy(req->location, CAST(char, location->data));
+        char *action = malloc(sizeof(char) * MAX_ACTION_LENGTH);
+        sscanf(header, "ACTION:%s", action);
+        free(header);
 
-
+        printf("action received: %s\n", action);
         // switch statement to handle the request
-        switch (req->req_type)
-        {
-            case 0:
-                write_tofile(req, client);
-                break;
-            case 1:
-                read_fromfile(req, client);
-                break;
-            case 2:
-                delete_file(req, client);
-                break;
-            case 3:
-                create_file(req, client);
-                break;
-            case 4:
-                moreinfo_file(req, client);
-            default:
-                printf("Invalid request.\n");
-                break;
-        }
+        if(strncmp(action, "read", 4) == 0) read_fromfile(client->server_socket);
 
     }
     return NULL;
@@ -114,9 +100,20 @@ int find_file(char path[])
     return -1;
 }
 
-int read_write(Request *req, Server *client, int read)
+int read_write(int fd, int read)
 {
     // for writing, check if the user has permissions + if the file exists
+    const char file_name_header[] = "FILENAME:";
+    int err;
+    char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char *filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+    
     pthread_mutex_lock(&file_lock);
     int index = find_file(req->path);
 
@@ -195,9 +192,9 @@ int write_tofile(Request *req, Server *client)
 }
 
 
-int read_fromfile(Request *req, Server *client)
+int read_fromfile(int fd)
 {
-    return read_write(req, client, 1);
+    return read_write(fd, 1);
 }
 
 int delete_file(Request *req, Server *client)
