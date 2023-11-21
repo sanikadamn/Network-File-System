@@ -221,6 +221,7 @@ int delete_file(int fd)
         if (strncmp(files[i]->filename, filename, strlen(filename)) == 0)
         {
             // check if all the servers are not -1
+            // TODO 
             if (files[i]->storageserver_socket[0] == -1 || files[i]->storageserver_socket[1] == -1 || files[i]->storageserver_socket[2] == -1)
             {
                 // send error to the client
