@@ -76,6 +76,8 @@ void get_files(buf_t* f, char* path) {
 			f->len--;
 		}
 	}
+
+	closedir(dir);
 }
 // NOLINTEND(concurrency-*)
 

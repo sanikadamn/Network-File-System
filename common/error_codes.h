@@ -5,3 +5,5 @@
 #define EFULL 4
 #define ENOTFOUND 5
 #define EBUSY 6
+
+#define SEND_STATUS(sock, x) send(sock, "STATUS:" #x "\n", 8 + sizeof(#x), 0)

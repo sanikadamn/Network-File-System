@@ -12,12 +12,7 @@
 #include "filemap.h"
 #include "../common/readline.h"
 #include "../common/concurrency.h"
-
-void send_status(int fd, int status_num) {
-	char status_buf[30] = {0};
-	sprintf(status_buf, "STATUS:%d\n", status_num);
-	send(fd, status_buf, strlen(status_buf), 0);
-}
+#include "../common/new_packets.h"
 
 void respond_read (int fd) {
     printf("responding to read\n");
@@ -37,13 +32,13 @@ void respond_read (int fd) {
 
     if (file == NULL) {
         printf("file not found\n");
-        // send_status(fd, NS_FILE_NOT_FOUND);
+        SEND_STATUS(fd, ENOTFOUND);
         return;
     }
 
     int file_fd = open(CAST(char, file->local_filename.data), O_RDONLY);
     if (file_fd == -1) {
-        // send_status(fd,);
+        SEND_STATUS(fd, OK);
         perror("client read");
         return;
     }
@@ -109,13 +104,18 @@ void respond_write (int fd) {
     printf("filename: %s\n", CAST(char, local_filename.data));
     int file_fd = open(CAST(char, local_filename.data), O_CREAT | O_WRONLY);
     if (file_fd == -1) {
-        // send_status(fd, );
+        perror("write open");
+        SEND_STATUS(fd, EBUSY);
+        if (f != NULL) {
+            WRITER_EXIT(f);
+        }
         return;
     }
 
+    int num_bytes = filesize;
+
     char buffer[BUFSIZE] = {0};
     while (filesize > BUFSIZE && err != -1) {
-        printf("reading\n");
         err = recv(fd, buffer, BUFSIZE, 0);
         if (err == -1) {
             perror("server recv");
@@ -132,18 +132,18 @@ void respond_write (int fd) {
     if (err == -1)
         return;
 
-    printf("nearly done\n");
     err = recv(fd, buffer, filesize, 0);
     write(file_fd, buffer, filesize);
     fsync(file_fd);
 
     if (f == NULL) {
-        // add file
+        add_file(CAST(char, local_filename.data), CAST(char, remote_filename.data), num_bytes, S_IRWXG | S_IRWXU | S_IRWXO);
+        buf_free(&local_filename);
+        buf_free(&remote_filename);
     } else {
+        f->file_size = num_bytes < f->file_size ? f->file_size : num_bytes;
         WRITER_EXIT(f);
     }
-
-    printf("done\n");
     free(filename);
 }
 
@@ -165,20 +165,17 @@ void respond_info (int fd) {
     struct file_metadata* f = search_file(filename);
 
     if (f == NULL) {
-        // send not found
+        SEND_STATUS(fd, ENOTFOUND);
     }
     else {
-    // send found
-    send(fd, "STATUS:200\n", 12, 0);
-    char size_buf[30];
-    sprintf(size_buf, "SIZE:%zu\n", f->file_size);
-    send(fd, size_buf, strlen(size_buf), 0);
+        SEND_STATUS(fd, OK);
+        char size_buf[30];
+        sprintf(size_buf, "SIZE:%zu\n", f->file_size);
+        send(fd, size_buf, strlen(size_buf), 0);
 
-    char perms_buf[30];
-    sprintf(perms_buf, "PERM:%d\n", f->perms);
-    send(fd, perms_buf, strlen(perms_buf), 0);
-
-
+        char perms_buf[30];
+        sprintf(perms_buf, "PERM:%d\n", f->perms);
+        send(fd, perms_buf, strlen(perms_buf), 0);
     }
     free(filename);
 }

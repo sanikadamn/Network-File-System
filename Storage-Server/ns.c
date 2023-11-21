@@ -77,15 +77,42 @@ void create (int ns_socket) {
     sscanf(header, "FILENAME:%s", filename);
     free(header);
 
-    printf("filename received: %s\n", filename);
-    send(ns_socket, "STATUS:200\n", 12, 0);
-    send(ns_socket, "SIZE:50\n", 8, 0);
+    // add file
+    str_t local_filename;
+    str_t remote_filename;
+    buf_malloc(&remote_filename, sizeof(char), strlen(filename) + 1);
+    strcpy(CAST(char, remote_filename.data), filename);
 
+    retrieve_local_filename(&local_filename, &remote_filename);
+    add_file(CAST(char, local_filename.data), CAST(char, remote_filename.data), 0, S_IRWXG | S_IRWXO | S_IRWXU);
+    creat(CAST(char, local_filename.data), S_IRWXG | S_IRWXO | S_IRWXU);
+    SEND_STATUS(ns_socket, OK);
     free(filename);
 }
 
 void delete (int ns_socket) {
+    const char filename_header[] = "FILENAME:";
+    int err;
+    char* header = read_line(ns_socket, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
 
+    char* filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+
+    struct file_metadata* file = search_file(filename);
+    if (file == NULL) {
+        SEND_STATUS(ns_socket, ENOTFOUND);
+    } else {
+        WRITER_ENTER(ss_files);
+        WRITER_ENTER(file);
+        file->deleted = 1;
+        WRITER_EXIT(file);
+        WRITER_EXIT(ss_files);
+        SEND_STATUS(ns_socket, OK);
+    }
 }
 
 void respond_copyin (int ns_socket) {
@@ -197,10 +224,20 @@ void listen_ns (void* arg) {
     char buffer[512];
     while ((err = recv(ns_socket, buffer, sizeof(buffer), MSG_PEEK))) {
         pthread_mutex_lock(&ns_lock);
-        char* op = read_str(ns_socket, "REQUEST:");
+        const char op_header[] = "ACTION:";
+        int err;
+        char* header = read_line(ns_socket, MAX_FILENAME_LENGTH + strlen(op_header) + 1, &err);
+        if (err == -1)
+            perror("client respond");
 
-        if (strcmp(op, "COPYIN") != 0) respond_copyin(ns_socket);
-        if (strcmp(op, "COPYOUT") != 0) respond_copyout(ns_socket);
+        char* op = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+        sscanf(header, "ACTION:%s", op);
+        free(header);
+
+        if (strcmp(op, "create") != 0) create(ns_socket);
+        if (strcmp(op, "delete") != 0) delete(ns_socket);
+        if (strcmp(op, "copyin") != 0) respond_copyin(ns_socket);
+        if (strcmp(op, "copyout") != 0) respond_copyout(ns_socket);
 
         pthread_mutex_unlock(&ns_lock);
     }
