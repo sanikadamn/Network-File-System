@@ -33,6 +33,7 @@ void log_it(char *msg)
 // connect the clients to the naming server
 void *connectClientToNS(void *arg)
 {
+    printf("Starting looking for clients\n");
     while (1)
     {
         int connfd;
@@ -65,12 +66,16 @@ void *clientRequests(void *arg)
         const char action_header[] = "ACTION:";
         int err;
         char *header = read_line(client->server_socket, MAX_ACTION_LENGTH + strlen(action_header) + 1, &err);
-        if(err == -1)
+        if(err == -1 || header == NULL) {
             perror("[-] client request");
-        log_it(header);
 
+        log_it(header);
+            return NULL;
+        } else if (err == 0) {
+            break;
+        }
         // convert packet to struct
-        char *action = malloc(sizeof(char) * MAX_ACTION_LENGTH);
+        char *action = calloc(MAX_ACTION_LENGTH, sizeof(char));
         sscanf(header, "ACTION:%s", action);
         free(header);
 
@@ -103,6 +108,7 @@ int find_file(char path[])
     // if not found in LRU, search list and add to LRU
     for (int i = 0; i < filecount; i++)
     {
+        printf("Checking file: %s\n", files[i]->filename);
         if (strcmp(files[i]->filename, path) == 0)
         {
             pthread_mutex_lock(&lru_mutex);
@@ -136,7 +142,7 @@ int read_write(int fd, int read)
 
     pthread_mutex_lock(&file_lock);
     int index = find_file(filename);
-
+    printf("File found at %d\n", index);
     if (filecount == 0 || servercount == 0)
     {
         // send error to the client
@@ -177,6 +183,7 @@ int read_write(int fd, int read)
         int serverdown = 0;
         for (int i = 0; i < COPY_SERVERS; i++)
         {
+            if (files[index]->on_servers[i] == NULL) continue;
             if (files[index]->on_servers[i]->server_socket == -1)
             {
                 serverdown = 1;
@@ -206,10 +213,10 @@ int read_write(int fd, int read)
     char ip[INET_ADDRSTRLEN + 1];
     inet_ntop(AF_INET, &(files[index]->on_servers[0]->server_addr.sin_addr.s_addr), ip, INET_ADDRSTRLEN);
     strcpy(packet.ip, ip);
-    packet.port = files[index]->on_servers[0]->server_addr.sin_port;
+    packet.port = files[index]->on_servers[0]->cport;
     int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
     char res[len];
-    sprintf(res, "STATUS:%d\nIP:%s\nPORT:%d\n", packet.status, packet.ip, packet.port);
+    sprintf(res, "STATUS:%d\nIP:%s\nPORT:%d\n%n", packet.status, packet.ip, packet.port, &len);
     pthread_mutex_unlock(&file_lock);
 
     int send_ret = send(fd, res, len, 0);
@@ -238,9 +245,11 @@ int delete_file(int fd)
     const char file_name_header[] = "FILENAME:";
     int err;
     char *header = read_line(fd, MAX_FILENAME_LENGTH + strlen(file_name_header) + 1, &err);
-    if (err == -1)
+    if (err == -1 || header == NULL) {
         perror("client respond");
-    log_it(header);
+        log_it(header);
+        return 0;
+    }
 
     char filename[MAX_FILENAME_LENGTH];
     sscanf(header, "FILENAME:%s", filename);
@@ -260,6 +269,7 @@ int delete_file(int fd)
             countfiles++;
             for (int j = 0; j < COPY_SERVERS; j++)
             {
+                if (files[i]->on_servers[j] == NULL) continue;
                 if (files[i]->on_servers[j]->server_socket == -1)
                 {
                     goto send_status;
@@ -278,18 +288,20 @@ int delete_file(int fd)
         {
             if (strncmp(files[i]->filename, filename, strlen(filename)) == 0)
             {
+                packet_a packet;
+                strcpy(packet.action, "delete");
+                strcpy(packet.filename, filename);
+                packet.numbytes = 0;
+
+                int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+                char res[len];
+                sprintf(res, "ACTION:%s\nFILENAME:%s\n%n", packet.action, packet.filename, &len);
+
                 for (int j = 0; j < COPY_SERVERS; j++)
                 {
                     // files[i]->on_servers[j]->ser
-                    packet_a packet;
-                    strcpy(packet.action, "delete");
-                    strcpy(packet.filename, filename);
-                    packet.numbytes = 0;
 
-                    int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
-                    char res[len];
-                    sprintf(res, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
-
+                    if (files[i]->on_servers[j] == NULL) continue;
                     pthread_mutex_lock(&files[i]->on_servers[j]->ss_lock);
                     int send_ret = send(files[i]->on_servers[j]->server_socket, res, len, 0);
                     if (send_ret < 0)
@@ -368,8 +380,9 @@ int create_file(int fd)
 
         int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
         char request[len];
-        sprintf(request, "ACTION:%s\nFILENAME:%s", packet.action, packet.filename);
+        sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", packet.action, packet.filename, &len);
 
+        if (servers[i] == NULL) continue;
         pthread_mutex_lock(&servers[i]->ss_lock);
         int err = send(servers[i]->server_socket, request, len, 0);
         if (err < 0)

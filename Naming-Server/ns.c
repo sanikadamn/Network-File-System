@@ -1,4 +1,5 @@
 #include "includes.h"
+#include <sys/socket.h>
 
 Server *NS_storage;
 Server *NS_client;
@@ -50,16 +51,26 @@ int main()
         perror("bind");
         exit(0);
     }
-    else
+    else {
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
         printf("Socket bound to address and port.\n");
+    }
 
     if(bind(server_client_socket, (struct sockaddr*)&server_client_addr, sizeof(server_client_addr)) < 0)
     {
         perror("bind");
         exit(0);
     }
-    else
+    else {
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
         printf("Socket bound to address and port.\n");
+    }
 
     if(listen(server_ss_socket, 100) < 0)
     {

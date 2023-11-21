@@ -19,6 +19,8 @@ typedef struct serv{
     int server_socket;
     struct sockaddr_in server_addr;
     uint64_t filesize;
+    int nport;
+    int cport;
     pthread_mutex_t ss_lock;
 } Server;
 

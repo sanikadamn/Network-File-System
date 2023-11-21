@@ -13,7 +13,7 @@
 #define LRU_SIZE 10 
 
 #ifndef NUM_THREADS
-#define NUM_THREADS 50
+#define NUM_THREADS 5
 #endif
 
 #ifndef COPY_SERVERS
@@ -34,3 +34,4 @@ extern pthread_mutex_t lru_mutex;
 #include "../common/new_packets.h"
 #include "../common/readline.h"
 #include "hashing.h"
+

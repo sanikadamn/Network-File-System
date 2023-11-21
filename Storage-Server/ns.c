@@ -48,12 +48,9 @@ void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	               "NUMFILES:", file_map.files.len);
 
 	for (size_t i = 0; i < file_map.files.len; i++) {
-		buf_t* buffer = serialize_buffer(
-		    CAST(struct file_metadata, file_map.files.data)[i]
-		        .remote_filename);
+		buf_t* buffer = &CAST(struct file_metadata, file_map.files.data)[i].remote_filename;
 		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4],
 		               "FILENAME:", *buffer);
-		buf_free(buffer);
 		add_i64_header(
 		    &CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:",
 		    CAST(struct file_metadata, file_map.files.data)[i]
@@ -82,6 +79,7 @@ void create (int ns_socket) {
     str_t remote_filename;
     buf_malloc(&remote_filename, sizeof(char), strlen(filename) + 1);
     strcpy(CAST(char, remote_filename.data), filename);
+    remote_filename.len = strlen(filename) + 1;
 
     retrieve_local_filename(&local_filename, &remote_filename);
     add_file(CAST(char, local_filename.data), CAST(char, remote_filename.data), 0, S_IRWXG | S_IRWXO | S_IRWXU);
@@ -106,6 +104,7 @@ void delete (int ns_socket) {
     if (file == NULL) {
         SEND_STATUS(ns_socket, ENOTFOUND);
     } else {
+        remove(CAST(char, file->local_filename.data));
         WRITER_ENTER(ss_files);
         WRITER_ENTER(file);
         file->deleted = 1;
@@ -234,10 +233,10 @@ void listen_ns (void* arg) {
         sscanf(header, "ACTION:%s", op);
         free(header);
 
-        if (strcmp(op, "create") != 0) create(ns_socket);
-        if (strcmp(op, "delete") != 0) delete(ns_socket);
-        if (strcmp(op, "copyin") != 0) respond_copyin(ns_socket);
-        if (strcmp(op, "copyout") != 0) respond_copyout(ns_socket);
+        if (strcmp(op, "create") == 0) create(ns_socket);
+        if (strcmp(op, "delete") == 0) delete(ns_socket);
+        if (strcmp(op, "copyin") == 0) respond_copyin(ns_socket);
+        if (strcmp(op, "copyout") == 0) respond_copyout(ns_socket);
 
         pthread_mutex_unlock(&ns_lock);
     }

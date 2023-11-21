@@ -58,6 +58,7 @@ packet_d ns_expect_redirect(char *action, char *file)
             return rd;
         }
 
+        printf("[+] Redirecting to appropriate storage server...\n");
         redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
         sscanf(redirect, "IP:%s", rd.ip);
 

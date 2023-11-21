@@ -45,6 +45,7 @@ void get_files(buf_t* f, char* path) {
 		if (err == -1) {
 			// TODO: Custom error mechanism??
 			perror(ent->d_name);
+			f->len--;
 			continue;
 		}
 
@@ -70,7 +71,7 @@ void get_files(buf_t* f, char* path) {
 
 			retrieve_remote_filename(&file->remote_filename,
 			                         &file->local_filename);
-			file->updated = 1;
+			file->updated = 0;
 		} else {
 			fprintf(stderr, "Ignoring as not accessible\n");
 			f->len--;
@@ -103,12 +104,13 @@ void retrieve_remote_filename(str_t* remote_filename,
 		remote_filename->len++;
 	}
 
+	remote_filename->len = strlen(CAST(char, remote_filename->data));
 	*dst = '\0';
 }
 
 void retrieve_local_filename(str_t* local_filename,
                              const str_t* remote_filename) {
-	buf_malloc(local_filename, sizeof(char), local_filename->len * 2 + 1);
+	buf_malloc(local_filename, sizeof(char), remote_filename->len * 2 + 1);
 
 	char* src = CAST(char, remote_filename->data);
 	char* dst = CAST(char, local_filename->data);

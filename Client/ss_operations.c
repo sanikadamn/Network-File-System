@@ -51,7 +51,7 @@ void ss_read_req(char *action, char *file)
     sscanf(feedback, "STATUS:%d", &fb.status);
     // free(feedback);
 
-    if (fb.status == ENOTFOUND)
+    if (fb.status == ENOTFOUND || fb.status == EFSERROR)
     {
         printf("[-] File not found\n");
         return;
@@ -70,7 +70,8 @@ void ss_read_req(char *action, char *file)
 
     // receive data from ss and print to stdout
     char data[MAX_STR_LENGTH];
-    while(1)
+    int num_bytes = fb.numbytes;
+    while(num_bytes > 0)
     {
         int bytes = recv(client_ss_socket, data, MAX_STR_LENGTH, 0);
         if(bytes < 0)
@@ -80,8 +81,10 @@ void ss_read_req(char *action, char *file)
         }
         else if(bytes == 0)
             break;
-        else
-            printf("%s", data);
+        else {
+            num_bytes -= bytes;
+            printf("received data of size %d, remaining: %d\n", bytes, num_bytes);
+        }
     }
 }
 
@@ -109,7 +112,7 @@ void ss_info_req(char *action, char *file)
     sscanf(feedback, "STATUS:%d", &fb.status);
     // free(feedback);
 
-    if (fb.status == 0)
+    if (fb.status == ENOTFOUND)
     {
         printf("[-] File not found\n");
         return;
@@ -127,17 +130,6 @@ void ss_info_req(char *action, char *file)
     printf("feedback that was received from ss: %s\n", feedback);
     printf("status: %d\n", fb.status);
     printf("numbytes: %d\n", fb.numbytes);
-
-    // receive data from ss and print to stdout
-    char data[MAX_STR_LENGTH];
-    int bytes = recv(client_ss_socket, data, MAX_STR_LENGTH, 0);
-    if(bytes < 0)
-    {
-        perror("[-] recv error");
-        exit(0);
-    }
-    else
-        printf("%s", data);
 }
 
 void ss_write_req(char *action, char *file)

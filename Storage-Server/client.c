@@ -38,10 +38,12 @@ void respond_read (int fd) {
 
     int file_fd = open(CAST(char, file->local_filename.data), O_RDONLY);
     if (file_fd == -1) {
-        SEND_STATUS(fd, OK);
+        SEND_STATUS(fd, EFSERROR);
         perror("client read");
         return;
     }
+
+    SEND_STATUS(fd, OK);
 
     printf("sending data\n");
     int num_bytes = file->file_size;
@@ -105,7 +107,7 @@ void respond_write (int fd) {
     int file_fd = open(CAST(char, local_filename.data), O_CREAT | O_WRONLY);
     if (file_fd == -1) {
         perror("write open");
-        SEND_STATUS(fd, EBUSY);
+        SEND_STATUS(fd, EFSERROR);
         if (f != NULL) {
             WRITER_EXIT(f);
         }

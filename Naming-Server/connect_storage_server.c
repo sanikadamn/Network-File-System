@@ -77,6 +77,12 @@ void* getFileInfo(void* arg) {
 		sscanf(nf, "NUMFILES:%d", &numfiles);
 		free(nf);
 
+		printf("Received heartbeat from %s:%d", ip_addr, nport);
+		printf("\tClient port: %d\n", cport);
+
+		storage->cport = cport;
+		storage->nport = nport;
+
 		while(numfiles --)
 		{
 			char *filename_header = read_line(storage->server_socket, MAX_FILENAME_LENGTH, &err);
@@ -86,8 +92,10 @@ void* getFileInfo(void* arg) {
 			}
 			log_it(filename_header);
 			char filename[MAX_FILENAME_LENGTH];
-			sscanf(filename_header, "FILENAME:%s", filename_header);
+			sscanf(filename_header, "FILENAME:%s", filename);
 			free(filename_header);
+
+			printf("File received: %s\n", filename);
 
 			char *fs = read_line(storage->server_socket, 20, &err);
 			if (err == -1) {
@@ -110,6 +118,8 @@ void* getFileInfo(void* arg) {
 					int assigned = 0;
 					for (int j = 0; j < COPY_SERVERS; j++)
 					{
+						if (files[i]->on_servers[j] == NULL) continue;
+
 						// TODO: correct this info
 						if(files[i]->on_servers[j]->server_socket == storage->server_socket)
 						{
@@ -130,13 +140,13 @@ void* getFileInfo(void* arg) {
 			{
 				files[filecount]->deleted = 0;
 				strcpy(files[filecount]->filename, filename);
-				files[filecount]->on_servers[0]->server_addr = storage->server_addr;
-				files[filecount]->on_servers[0]->server_socket = storage->server_socket;
+				files[filecount]->on_servers[0] = storage;
 				for (int j = 1; j < COPY_SERVERS; j ++)
 				{
-					files[filecount]->on_servers[j]->server_socket = -1;
+					files[filecount]->on_servers[j] = NULL;
 				}
-				filecount ++;
+				filecount++;
+				printf("New file created on the server!\n");
 			}
 			for(int i = 0; i < servercount; i++)
 			{
@@ -170,7 +180,7 @@ void* connectStorageServer(void* arg) {
 			perror("accept");
 			// exit(0);
 		} else
-			printf("Connection accepted from %s:%d.\n",
+			printf("Connection accepted from storage server %s:%d.\n",
 			       inet_ntoa(storage_server.sin_addr),
 			       ntohs(storage_server.sin_port));
 		log_it(strcat("Connection accepted from ", inet_ntoa(storage_server.sin_addr)));
@@ -183,7 +193,7 @@ void* connectStorageServer(void* arg) {
         servers[servercount]->server_socket = connfd;
         servers[servercount]->server_addr = storage_server;
         servercount++;
-		pthread_mutex_lock(&file_lock);
+		pthread_mutex_unlock(&file_lock);
 		pthread_mutex_init(&storage->ss_lock, NULL);
 		storage->server_socket = connfd;
 		storage->server_addr = storage_server;

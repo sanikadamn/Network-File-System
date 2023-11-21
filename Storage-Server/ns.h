@@ -25,4 +25,5 @@ void send_heartbeat (void* arg);
 */
 void prepare_filemap_packet (struct files file_map, buf_t* buffer);
 
+void listen_ns (void* arg);
 #endif // NS_H_

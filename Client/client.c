@@ -50,6 +50,7 @@ char* read_line(int fd, int max_len) {
 
     int len = head - str;
     str = realloc(str, len);
+    printf("readline str received: %s\n", str);
     return str;
 }
 
@@ -95,4 +96,7 @@ int main()
     {
         ss_info_req(choice, filepath);
     }
+
+    close(client_ss_socket);
+    close(client_ns_socket);
 }
