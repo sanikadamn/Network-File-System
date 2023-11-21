@@ -11,6 +11,7 @@
 #include "constants.h"
 #include "filemap.h"
 #include "../common/readline.h"
+#include "../common/concurrency.h"
 
 void send_status(int fd, int status_num) {
 	char status_buf[30] = {0};
@@ -61,9 +62,9 @@ void respond_read (int fd) {
         num_bytes -= BUFSIZE;
     }
 
-    read(fd, buffer, num_bytes);
+    read(file_fd, buffer, num_bytes);
     send(fd, buffer, num_bytes, 0);
-
+    close(file_fd);
     free(filename);
 }
 
@@ -94,17 +95,55 @@ void respond_write (int fd) {
 
     struct file_metadata* f = search_file(filename);
 
+    buf_t remote_filename;
+    buf_t local_filename;
     if (f == NULL) {
-
+        buf_malloc(&remote_filename, sizeof(char), strlen(filename) + 1);
+        strcpy(CAST(char, remote_filename.data), filename);
+        retrieve_local_filename(&local_filename, &remote_filename);
+    } else {
+        WRITER_ENTER(f);
+        local_filename = f->local_filename;
     }
 
-    char buffer[BUFSIZ];
-    while (filesize < BUFSIZ && !err) {
-        err = recv(fd, buffer, BUFSIZ, 0);
-        printf("buffer: %s\n", buffer);
+    printf("filename: %s\n", CAST(char, local_filename.data));
+    int file_fd = open(CAST(char, local_filename.data), O_CREAT | O_WRONLY);
+    if (file_fd == -1) {
+        // send_status(fd, );
+        return;
     }
-    err = recv(fd, buffer, BUFSIZ, 0);
-    printf("buffer: %s\n", buffer);
+
+    char buffer[BUFSIZE] = {0};
+    while (filesize > BUFSIZE && err != -1) {
+        printf("reading\n");
+        err = recv(fd, buffer, BUFSIZE, 0);
+        if (err == -1) {
+            perror("server recv");
+            return;
+        }
+        err = write(file_fd, buffer, BUFSIZE);
+        if (err == -1) {
+            perror("server write");
+            return;
+        }
+        filesize -= BUFSIZE;
+    }
+
+    if (err == -1)
+        return;
+
+    printf("nearly done\n");
+    err = recv(fd, buffer, filesize, 0);
+    write(file_fd, buffer, filesize);
+    fsync(file_fd);
+
+    if (f == NULL) {
+        // add file
+    } else {
+        WRITER_EXIT(f);
+    }
+
+    printf("done\n");
     free(filename);
 }
 
