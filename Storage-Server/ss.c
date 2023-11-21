@@ -33,6 +33,7 @@ int check_access(char* path) {
 }
 
 void init_server(char* root) {
+	chdir(root);
 	ss_files = init_ss_filemaps(root);
 
 	// Handle heartbeat

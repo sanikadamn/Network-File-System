@@ -1,11 +1,15 @@
 #include <error.h>
+#include <fcntl.h>
 #include <sys/socket.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
+#include <unistd.h>
 
 #include "client.h"
 #include "../common/globals.h"
+#include "constants.h"
+#include "filemap.h"
 
 char* read_line(int fd, int max_len, int* err) {
     char* str = malloc(sizeof(char) * (max_len + 1));
@@ -26,6 +30,12 @@ char* read_line(int fd, int max_len, int* err) {
     return str;
 }
 
+void send_status(int fd, int status_num) {
+	char status_buf[30] = {0};
+	sprintf(status_buf, "STATUS:%d\n", status_num);
+	send(fd, status_buf, strlen(status_buf), 0);
+}
+
 void respond_read (int fd) {
     printf("responding to read\n");
     const char filename_header[] = "FILENAME:";
@@ -39,12 +49,39 @@ void respond_read (int fd) {
     free(header);
 
     printf("filename received: %s\n", filename);
-    send(fd, "STATUS:200\n", 12, 0);
-    send(fd, "NUMBYTES:50\n", 13, 0);
 
-    while (1) {
-        send(fd, "a", 1, 0);
+    struct file_metadata* file = search_file(filename);
+
+    if (file == NULL) {
+        printf("file not found\n");
+        // send_status(fd, NS_FILE_NOT_FOUND);
+        return;
     }
+
+    int file_fd = open(CAST(char, file->local_filename.data), O_RDONLY);
+    if (file_fd == -1) {
+        // send_status(fd,);
+        perror("client read");
+        return;
+    }
+
+    printf("sending data\n");
+    int num_bytes = file->file_size;
+    char numbytes_buffer[30] = {0};
+    sprintf(numbytes_buffer, "NUMBYTES:%d\n", num_bytes);
+    send(fd, numbytes_buffer, strlen(numbytes_buffer), 0);
+
+    char* buffer[BUFSIZE] = {0};
+
+    while (num_bytes > BUFSIZE) {
+        read(file_fd, buffer, BUFSIZE);
+        send(fd, buffer, BUFSIZE, 0);
+        num_bytes -= BUFSIZE;
+    }
+
+    read(fd, buffer, num_bytes);
+    send(fd, buffer, num_bytes, 0);
+
     free(filename);
 }
 
@@ -72,6 +109,12 @@ void respond_write (int fd) {
 
     printf("filename received: %s\n", filename);
     printf("filesize received: %d\n", filesize);
+
+    struct file_metadata* f = search_file(filename);
+
+    if (f == NULL) {
+
+    }
 
     char buffer[BUFSIZ];
     while (filesize < BUFSIZ && !err) {
