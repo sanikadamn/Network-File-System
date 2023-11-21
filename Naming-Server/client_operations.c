@@ -338,7 +338,7 @@ int create_file(int fd)
         }
     }
 
-    
+    pthread_mutex_unlock(&file_lock);
     return 0;
 }
 
