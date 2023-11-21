@@ -14,10 +14,11 @@
 #include "../common/packets.h"
 #include "../common/serialize.h"
 #include "constants.h"
+#include "../common/new_packets.h"
+#include "../common/readline.h"
 
 pthread_mutex_t ns_lock;
 pthread_once_t once_control = PTHREAD_ONCE_INIT;
-
 
 void init_ns_lock () {
     pthread_mutex_init(&ns_lock, NULL);}
@@ -47,12 +48,9 @@ void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	               "NUMFILES:", file_map.files.len);
 
 	for (size_t i = 0; i < file_map.files.len; i++) {
-		buf_t* buffer = serialize_buffer(
-		    CAST(struct file_metadata, file_map.files.data)[i]
-		        .remote_filename);
+		buf_t* buffer = &CAST(struct file_metadata, file_map.files.data)[i].remote_filename;
 		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4],
 		               "FILENAME:", *buffer);
-		buf_free(buffer);
 		add_i64_header(
 		    &CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:",
 		    CAST(struct file_metadata, file_map.files.data)[i]
@@ -64,6 +62,58 @@ void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
 	READER_EXIT(&file_map);
 }
 
+void create (int ns_socket) {
+    printf("responding to create\n");
+    const char filename_header[] = "FILENAME:";
+    int err;
+    char* header = read_line(ns_socket, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char* filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+    // add file
+    str_t local_filename;
+    str_t remote_filename;
+    buf_malloc(&remote_filename, sizeof(char), strlen(filename) + 1);
+    strcpy(CAST(char, remote_filename.data), filename);
+    remote_filename.len = strlen(filename) + 1;
+
+    retrieve_local_filename(&local_filename, &remote_filename);
+    add_file(CAST(char, local_filename.data), CAST(char, remote_filename.data), 0, S_IRWXG | S_IRWXO | S_IRWXU);
+    creat(CAST(char, local_filename.data), S_IRWXG | S_IRWXO | S_IRWXU);
+    SEND_STATUS(ns_socket, OK);
+    free(filename);
+}
+
+void delete (int ns_socket) {
+    const char filename_header[] = "FILENAME:";
+    int err;
+    char* header = read_line(ns_socket, MAX_FILENAME_LENGTH + strlen(filename_header) + 1, &err);
+    if (err == -1)
+        perror("client respond");
+
+    char* filename = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+    sscanf(header, "FILENAME:%s", filename);
+    free(header);
+
+
+    struct file_metadata* file = search_file(filename);
+    if (file == NULL) {
+        SEND_STATUS(ns_socket, ENOTFOUND);
+    } else {
+        remove(CAST(char, file->local_filename.data));
+        WRITER_ENTER(ss_files);
+        WRITER_ENTER(file);
+        file->deleted = 1;
+        WRITER_EXIT(file);
+        WRITER_EXIT(ss_files);
+        SEND_STATUS(ns_socket, OK);
+    }
+}
+
 void respond_copyin (int ns_socket) {
     buf_t* filename = read_str(ns_socket, "FILENAME:");
     i64 num_bytes = read_i64(ns_socket, "NUMBYTES:");
@@ -73,7 +123,7 @@ void respond_copyin (int ns_socket) {
         WRITER_ENTER(file);
     }
 
-    char* remote_file
+    char* remote_file;
 
     int fd = open(CAST(char, filename->data), O_CREAT | O_WRONLY);
 
@@ -91,13 +141,11 @@ void respond_copyin (int ns_socket) {
     fsync(fd);
 
     if (file != NULL) {
-        WRITER_ENTER(ss_files);
-        ss_files->changed = 1;
-        WRITER_EXIT(ss_files);
         file->file_size += num_bytes;
+        file->updated = 1;
         WRITER_EXIT(file);
     } else {
-        add_file(filename,; num_bytes);
+        // add_file(filename,; num_bytes);
     }
 
     free(file);
@@ -110,7 +158,7 @@ void respond_copyout (int ns_socket) {
 
     struct file_metadata* file = search_file(filename);
     if (file != NULL) {
-        no_ack();
+        return;
     } else {
         buf_t headers;
         buf_malloc(&headers, sizeof(buf_t), 2);
@@ -138,8 +186,6 @@ void respond_copyout (int ns_socket) {
 
 void send_heartbeat(void* arg) {
 	int ns_socket = (int)arg;
-	ss_files->changed = 1;
-	buf_malloc(&ss_files->packet, sizeof(char), 1);
 
     pthread_once(&once_control, init_ns_lock);
 
@@ -150,22 +196,20 @@ void send_heartbeat(void* arg) {
 
 		printf("sending heartbeat\n");
 
-		if (ss_files->changed) {
-			ss_files->changed = 0;
-			prepare_filemap_packet(*ss_files, &ss_files->packet);
-		}
-
+		buf_t packet;
+        prepare_filemap_packet(*ss_files, &packet);
         pthread_mutex_lock(&ns_lock);
-		size_t err = send(ns_socket, (char*)ss_files->packet.data,
-		                  ss_files->packet.len, 0);
+		size_t err = send(ns_socket, (char*)packet.data,
+		                  packet.len, 0);
         pthread_mutex_unlock(&ns_lock);
+        buf_free(&packet);
 
 		if (err == -1) {
 			perror("ns send");
 		}
 
 		READER_EXIT(ss_files);
-		sleep(1); // NOLINT(concurrency-mt-unsafe)
+		sleep(10); // NOLINT(concurrency-mt-unsafe)
 	}
 	return;
 }
@@ -179,10 +223,20 @@ void listen_ns (void* arg) {
     char buffer[512];
     while ((err = recv(ns_socket, buffer, sizeof(buffer), MSG_PEEK))) {
         pthread_mutex_lock(&ns_lock);
-        char* op = read_str(ns_socket, "REQUEST:");
+        const char op_header[] = "ACTION:";
+        int err;
+        char* header = read_line(ns_socket, MAX_FILENAME_LENGTH + strlen(op_header) + 1, &err);
+        if (err == -1)
+            perror("client respond");
 
-        if (strcmp(op, "COPYIN") != 0) respond_copyin(ns_socket);
-        if (strcmp(op, "COPYOUT") != 0) respond_copyout(ns_socket);
+        char* op = malloc(sizeof(char) * MAX_FILENAME_LENGTH);
+        sscanf(header, "ACTION:%s", op);
+        free(header);
+
+        if (strcmp(op, "create") == 0) create(ns_socket);
+        if (strcmp(op, "delete") == 0) delete(ns_socket);
+        if (strcmp(op, "copyin") == 0) respond_copyin(ns_socket);
+        if (strcmp(op, "copyout") == 0) respond_copyout(ns_socket);
 
         pthread_mutex_unlock(&ns_lock);
     }

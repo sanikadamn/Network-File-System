@@ -18,17 +18,16 @@ CFLAGS = -Wall -g -lpthread
 DEPS = $(wildcard *.h)
 
 SRCS = \
-	ns.c \
+	client.c \
 	../common/thread_pool.c \
-	client_operations.c \
-	connect_storage_server.c \
-	../common/packets.c \
 	../common/buffer.c \
+	ss_operations.c \
+	ns_operations.c \
 
 OBJS = $(SRCS:.c=.o)
 
 # Executeable name
-EXEC = ns
+EXEC = client
 
 # Default target to build the executable
 all: $(EXEC)

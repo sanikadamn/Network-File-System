@@ -20,6 +20,7 @@
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
+#include "client.h"
 
 typedef uint32_t u32;
 
@@ -29,48 +30,6 @@ void* get_in_addr(struct sockaddr* sa) {
 	}
 
 	return &(((struct sockaddr_in6*)sa)->sin6_addr);
-}
-
-void prepare_filemap_packet(struct files file_map, struct buffer* buf) {
-	READER_ENTER(&file_map);
-	buf_t lines;
-
-	// The 4 extra lines are for headers:
-	// - IP address
-	// - NS Port
-	// - Client Port
-	// - Number of files
-	// Each file is then listed, with the serialised filename and size each
-	// taking up a line
-	buf_malloc(&lines, sizeof(str_t),
-	           2 * file_map.files.len +
-	               4); // See packet format for magic numbers
-
-	// Allocate headers
-	add_str_header(&CAST(str_t, lines.data)[0], "IP:", net_details.ss_ip);
-	add_str_header(&CAST(str_t, lines.data)[1],
-	               "NPORT:", net_details.ns_port);
-	add_str_header(&CAST(str_t, lines.data)[2],
-	               "CPORT:", net_details.client_port);
-	add_int_header(&CAST(str_t, lines.data)[3],
-	               "NUMFILES:", file_map.files.len);
-
-	for (size_t i = 0; i < file_map.files.len; i++) {
-		buf_t* buffer = serialize_buffer(
-		    CAST(struct file_metadata, file_map.files.data)[i]
-		        .remote_filename);
-		add_buf_header(&CAST(str_t, lines.data)[2 * i + 4],
-		               "FILENAME:", *buffer);
-		buf_free(buffer);
-		add_i64_header(
-		    &CAST(str_t, lines.data)[2 * i + 5], "FILESIZE:",
-		    CAST(struct file_metadata, file_map.files.data)[i]
-		        .file_size);
-	}
-
-	lines.len = 2 * file_map.files.len + 4;
-	coalsce_buffers(buf, &lines);
-	READER_EXIT(&file_map);
 }
 
 int init_connection(char* ip, char* port, int server) {
@@ -155,74 +114,7 @@ int init_connection(char* ip, char* port, int server) {
 	return sockfd;
 }
 
-void send_heartbeat(void* arg) {
-	int ns_socket = (int)arg;
-	ss_files->changed = 1;
-	buf_malloc(&ss_files->packet, sizeof(char), 1);
-
-	printf("IMPORTANT: starting heartbeat sending\n");
-
-	while (1) {
-		READER_ENTER(ss_files);
-
-		printf("sending heartbeat\n");
-
-		if (ss_files->changed) {
-			ss_files->changed = 0;
-			prepare_filemap_packet(*ss_files, &ss_files->packet);
-		}
-		size_t err = send(ns_socket, (char*)ss_files->packet.data,
-		                  ss_files->packet.len, 0);
-
-		if (err == -1) {
-			perror("ns send");
-			goto release;
-		}
-
-		char buffer[512];
-		err = recv(ns_socket, buffer, sizeof(buffer), MSG_DONTWAIT);
-		if (err == -1 && errno != EWOULDBLOCK) {
-			perror("recv");
-			goto release;
-		} else if (err == 0) {
-			printf("client closed connection\n");
-			perror("recv");
-			READER_EXIT(ss_files);
-			return;
-		}
-
-	release:
-		READER_EXIT(ss_files);
-		sleep(1); // NOLINT(concurrency-mt-unsafe)
-	}
-	return;
-}
-
-void respond(void* arg) {
-	int* fd = (int*)arg;
-	int new_fd = *fd;
-	free(fd);
-
-	size_t err;
-	char buffer[1024];
-	while ((err = recv(new_fd, buffer, sizeof(buffer), 0))) {
-
-		if (err == -1) {
-			perror("responding to client :(");
-			continue;
-		}
-
-		fprintf(stderr, "Received: %s\n", buffer);
-		err = send(new_fd, "Hello world", 10, 0);
-		if (err == -1) {
-			perror("sending to client :(");
-		}
-	}
-	close(new_fd);
-	return;
-}
-
-void listen_connections(void* arg) {
+void listen_client_connections(void* arg) {
 	struct listen_args* args = (struct listen_args*)arg;
 	int sockfd = args->sockfd;
 	tpool_t* threadpool = args->thread_pool;
@@ -267,7 +159,7 @@ void listen_connections(void* arg) {
 
 		int* fd = malloc(sizeof(int));
 		*fd = new_fd;
-		tpool_work(threadpool, respond, (void*)fd);
+		tpool_work(threadpool, respond_client, (void*)fd);
 	}
 	return;
 }

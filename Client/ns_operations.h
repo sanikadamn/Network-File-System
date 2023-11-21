@@ -3,18 +3,7 @@
 
 #include "includes.h"
 
-typedef struct req {
-    int req_type;
-    char path[1024];
-} Request;
-
-typedef struct res{
-    int errortype;
-    struct sockaddr_in server_addr;
-    int server_socket;
-} Response;
-
-buf_t *creq_to_ns(char *req, char *file);
-int validate_ns_response(buf_t *response);
+packet_d ns_expect_redirect(char *action, char *file);
+void ns_expect_feedback(char *action, char *file1, char *file2);
 
 #endif

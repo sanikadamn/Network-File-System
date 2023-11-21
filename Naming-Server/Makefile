@@ -24,6 +24,8 @@ SRCS = \
 	connect_storage_server.c \
 	../common/packets.c \
 	../common/buffer.c \
+	../common/readline.c \
+	# pq.c \
 
 OBJS = $(SRCS:.c=.o)
 

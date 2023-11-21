@@ -1,8 +1,13 @@
 #include "includes.h"
+#include <sys/socket.h>
 
 Server *NS_storage;
 Server *NS_client;
 tpool_t* thread_pool;
+
+File *lru_cache[LRU_SIZE];
+int lru_index = 0;
+pthread_mutex_t lru_mutex;
 
 int main()
 {
@@ -10,6 +15,8 @@ int main()
     int server_ss_socket, server_client_socket;
     struct sockaddr_in server_ss_addr, server_client_addr;
 
+    pthread_mutex_init(&lru_mutex, NULL);
+    
     server_ss_socket = socket(AF_INET, SOCK_STREAM, 0);
     if(server_ss_socket < 0)
     {
@@ -44,16 +51,26 @@ int main()
         perror("bind");
         exit(0);
     }
-    else
+    else {
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
         printf("Socket bound to address and port.\n");
+    }
 
     if(bind(server_client_socket, (struct sockaddr*)&server_client_addr, sizeof(server_client_addr)) < 0)
     {
         perror("bind");
         exit(0);
     }
-    else
+    else {
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
+        if (setsockopt(server_ss_socket, SOL_SOCKET, SO_REUSEPORT, &(int){1}, sizeof(int)) < 0)
+            perror("setsockopt");
         printf("Socket bound to address and port.\n");
+    }
 
     if(listen(server_ss_socket, 100) < 0)
     {

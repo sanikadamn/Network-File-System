@@ -3,6 +3,7 @@
 #include <unistd.h>
 
 #include "../common/thread_pool.h"
+#include "ns.h"
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
@@ -15,7 +16,7 @@ struct network net_details;
 int usage(int argc, char* argv[]) {
 	fprintf(stderr, "invalid usage!\n");
 
-	fprintf(stderr, "Usage: %s fspath ns_ip ns_port (got ", argv[0]);
+	fprintf(stderr, "Usage: %s fspath ns_ip ns_port client_port (got ", argv[0]);
 	for (int i = 0; i < argc; i++)
 		printf("%s ", argv[i]);
 	printf(")\n");
@@ -33,6 +34,7 @@ int check_access(char* path) {
 }
 
 void init_server(char* root) {
+	chdir(root);
 	ss_files = init_ss_filemaps(root);
 
 	// Handle heartbeat
@@ -50,7 +52,10 @@ void init_server(char* root) {
 	tpool_work(thread_pool, send_heartbeat, (void*)ns);
 
 	struct listen_args args_client = {thread_pool, client_socket};
-	tpool_work(thread_pool, listen_connections, (void*)&args_client);
+	tpool_work(thread_pool, listen_client_connections, (void*)&args_client);
+
+	tpool_work(thread_pool, listen_ns, (void*)ns);
+
 
 	tpool_wait(thread_pool);
 	printf("No more connections left. Closing the server\n");
@@ -59,17 +64,19 @@ void init_server(char* root) {
 }
 
 int main(int argc, char* argv[]) {
-	if (argc != 4) {
+	if (argc != 5) {
 		return usage(argc, argv);
 	}
 
 	char* root_path = argv[1];
 	char* ns_ip = argv[2];
 	char* ns_port = argv[3];
+	char* client_port = argv[4];
 
 	strcpy(net_details.ss_ip, LOCALHOST);
+
 	strcpy(net_details.ns_ip, ns_ip);
-	strcpy(net_details.client_port, DEFAULT_CLIENT_PORT);
+	strcpy(net_details.client_port, client_port);
 	strcpy(net_details.ns_port, ns_port);
 
 	if (check_access(root_path)) {

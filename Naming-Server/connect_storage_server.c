@@ -15,6 +15,18 @@ Server* servers[100];
 
 int filecount = 0;
 int servercount = 0;
+int len = MAX_ACTION_LENGTH + MAX_FILENAME_LENGTH + 20;
+pthread_mutex_t log_lock = PTHREAD_MUTEX_INITIALIZER;
+
+void log_it(char *msg)
+{
+	pthread_mutex_lock(&log_lock);
+	FILE *log = fopen("../log.txt", "a");
+	write(log, msg, strlen(msg));
+	write(log, "\n", 1);
+	fclose(log);
+	pthread_mutex_unlock(&log_lock);
+}
 
 void* getFileInfo(void* arg) {
 	// get the file paths from the storage server
@@ -23,86 +35,130 @@ void* getFileInfo(void* arg) {
 	Server* storage = (Server*)arg;
 
 	// read one file packet
-	buf_t file_packet;
-	buf_malloc(&file_packet, sizeof(str_t), 2048);
-    int numberfiles = 0;
 	while (1) {
-		int bytes_read = recv(storage->server_socket, file_packet.data,
-		                      sizeof(buf_t), MSG_PEEK);
-		if (bytes_read < 0) {
-			perror("read");
-			break;
+		int err;
+		char *ip = read_line(storage->server_socket, 50, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return NULL;
 		}
-		if (bytes_read == 0) {
-			printf("Done reading\n");
-			break;
-		}
-		// convert packet to struct
-		buf_t* ip = read_str(storage->server_socket, "IP:");
-		buf_t* nport = read_str(storage->server_socket, "NPORT:");
-		buf_t* cport = read_str(storage->server_socket, "CPORT:");
-		i32 numfiles = read_i32(storage->server_socket, "NUMFILES:");
-		buf_t* filename = read_str(storage->server_socket, "FILENAME:");
-		i64 filesize = read_i64(storage->server_socket, "FILESIZE:");
+		log_it(ip);
+		char ip_addr[50];
+		sscanf(ip, "IP:%s", ip_addr);
+		free(ip);
 
-		// check if the file is already in the array
-		int file_exists = 0;
-        pthread_mutex_lock(&file_lock);
-		for (int i = 0; i < filecount; i++) {
-			if (strcmp(files[i]->filename,
-			           CAST(char, filename->data)) == 0) {
-				for (int j = 0; j < 3; j++) {
-					if (files[i]->storageserver_socket[j] == -1) 
-                    {
-                        strcpy(files[i]->ss_ip[j], CAST(char, ip->data));
-                        strcpy(files[i]->ns_port[j], CAST(char, nport->data));
-                        strcpy(files[i]->client_port[j], CAST(char, cport->data));
-						files[i]->storageserver_socket[j] = storage->server_socket;
-						files[i]->storageserver[j] = storage->server_addr;
-						break;
+		char *np = read_line(storage->server_socket, 10, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return NULL;
+		}
+		log_it(np);
+		int nport;
+		sscanf(np, "NPORT:%d", &nport);
+		free(np);
+
+		char *cp = read_line(storage->server_socket, 10, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return NULL;
+		}
+		log_it(cp);
+		int cport;
+		sscanf(cp, "CPORT:%d", &cport);
+		free(cp);
+
+		char *nf = read_line(storage->server_socket, 20, &err);
+		if (err == -1) {
+			perror("ns receive");
+			return NULL;
+		}
+		log_it(nf);
+		int numfiles;
+		sscanf(nf, "NUMFILES:%d", &numfiles);
+		free(nf);
+
+		printf("Received heartbeat from %s:%d", ip_addr, nport);
+		printf("\tClient port: %d\n", cport);
+
+		storage->cport = cport;
+		storage->nport = nport;
+
+		while(numfiles --)
+		{
+			char *filename_header = read_line(storage->server_socket, MAX_FILENAME_LENGTH, &err);
+			if (err == -1) {
+				perror("ns receive");
+				return NULL;
+			}
+			log_it(filename_header);
+			char filename[MAX_FILENAME_LENGTH];
+			sscanf(filename_header, "FILENAME:%s", filename);
+			free(filename_header);
+
+			printf("File received: %s\n", filename);
+
+			char *fs = read_line(storage->server_socket, 20, &err);
+			if (err == -1) {
+				perror("ns receive");
+				return NULL;
+			}
+			log_it(fs);
+			int filesize;
+			sscanf(fs, "FILESIZE:%d", &filesize);
+			free(fs);
+
+			// check if the file already exists
+			pthread_mutex_lock(&file_lock);
+			int fileexists = 0;
+			for(int i = 0; i < filecount && !fileexists; i ++)
+			{
+				if(strcmp(files[i]->filename, filename) == 0)
+				{
+					fileexists = 1;
+					int assigned = 0;
+					for (int j = 0; j < COPY_SERVERS; j++)
+					{
+						if (files[i]->on_servers[j] == NULL) continue;
+
+						// TODO: correct this info
+						if(files[i]->on_servers[j]->server_socket == storage->server_socket)
+						{
+							assigned = 1;
+							break;
+						}
+
+						if (assigned == 0 && files[i]->on_servers[j]->server_socket == -1)
+						{
+							files[i]->on_servers[j]->server_socket = storage->server_socket;
+							files[i]->on_servers[j]->server_addr = storage->server_addr;
+							break;
+						}
 					}
 				}
-				file_exists = 1;
-				break;
 			}
+			if (fileexists == 0)
+			{
+				files[filecount]->deleted = 0;
+				strcpy(files[filecount]->filename, filename);
+				files[filecount]->on_servers[0] = storage;
+				for (int j = 1; j < COPY_SERVERS; j ++)
+				{
+					files[filecount]->on_servers[j] = NULL;
+				}
+				filecount++;
+				printf("New file created on the server!\n");
+			}
+			for(int i = 0; i < servercount; i++)
+			{
+				if(servers[i]->server_socket == storage->server_socket)
+				{
+					servers[i]->filesize += filesize;
+					break;
+				}
+			}
+			pthread_mutex_unlock(&file_lock);
 		}
-		if (file_exists == 0) {
 
-			// store this file in the file array
-			strcpy(files[filecount]->ss_ip[0], CAST(char, ip->data));
-			strcpy(files[filecount]->ns_port[0],
-			       CAST(char, nport->data));
-			strcpy(files[filecount]->client_port[0],
-			       CAST(char, cport->data));
-			files[filecount]->num_files = numfiles;
-			strcpy(files[filecount]->filename,
-			       CAST(char, filename->data));
-			files[filecount]->filesize = filesize;
-			for (int i = 0; i < 3; i++)
-				files[filecount]->storageserver_socket[i] = -1;
-
-			files[filecount]->storageserver[0] =
-			    storage->server_addr;
-			files[filecount]->storageserver_socket[0] =
-			    storage->server_socket;
-			filecount++;
-		}
-        // find what server the file is in in the server array
-        int serverindex = -1;
-        for(int i = 0; i < servercount; i++)
-        {
-            if(servers[i]->server_socket == storage->server_socket)
-            {
-                serverindex = i;
-                break;
-            }
-        }
-        // add the file to the server array
-        servers[serverindex]->filesize += filesize;
-		pthread_mutex_unlock(&file_lock);
-        numberfiles++;
-        if(numberfiles == numfiles)
-            break;
 	}
 
 	return NULL;
@@ -124,20 +180,67 @@ void* connectStorageServer(void* arg) {
 			perror("accept");
 			// exit(0);
 		} else
-			printf("Connection accepted from %s:%d.\n",
+			printf("Connection accepted from storage server %s:%d.\n",
 			       inet_ntoa(storage_server.sin_addr),
 			       ntohs(storage_server.sin_port));
+		log_it(strcat("Connection accepted from ", inet_ntoa(storage_server.sin_addr)));
 
 		// make a thread for the storage server to accept the initial
 		// data
 		Server* storage = (Server*)malloc(sizeof(Server));
+		pthread_mutex_lock(&file_lock);
         servers[servercount] = malloc(sizeof(Server));
         servers[servercount]->server_socket = connfd;
         servers[servercount]->server_addr = storage_server;
         servercount++;
+		pthread_mutex_unlock(&file_lock);
+		pthread_mutex_init(&storage->ss_lock, NULL);
 		storage->server_socket = connfd;
 		storage->server_addr = storage_server;
 		tpool_work(thread_pool, (void (*)(void*))getFileInfo,
 		           (void*)storage);
 	}
 }
+
+// int send_create_delete_to_ss(char *action, char *filepath)
+// {
+// 	// select a storage server to create the file on
+// 	int ss_index = rand() % servercount;
+// 	Server* ss = servers[ss_index];
+// 	// send the create command to the storage server
+	
+// 	packet_a req;
+// 	strcpy(req.action, action);
+// 	strcpy(req.filename, filepath);
+
+// 	char request[len];
+
+// 	sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action,
+// 	        req.filename, &len);
+
+// 	// send request to ss
+// 	if (send(ss->server_socket, request, len, 0) < 0) {
+// 		printf("[-] send error");
+// 		return 0;
+// 	}
+
+// 	// receive feedback from ss
+// 	char* feedback;
+// 	packet_c fb;
+// 	feedback = read_line(ss->server_socket, MAX_FEEDBACK_STRING_LENGTH + 20);
+// 	sscanf(feedback, "STATUS:%d", &fb.status);
+// 	// free(feedback);
+
+// 	if (fb.status == 0) {
+// 		printf("[-] %d operation unsuccessful\n", action);
+// 		return 0;
+// 	}
+
+// 	// send acknowledgement to client
+// 	char ack[100];
+// 	sprintf(ack, "STATUS:%d\n%n", fb.status, &len);
+// 	if (send(NS_client->server_socket, ack, len, 0) < 0) {
+// 		printf("[-] feedback send error");
+// 		return 0;
+// 	}
+// }

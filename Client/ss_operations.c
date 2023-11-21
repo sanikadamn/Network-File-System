@@ -1,50 +1,164 @@
 #include "includes.h"
 
-void ss_connect(buf_t *ns_res)
-{
-    i32 port = read_i32(ns_res->data, "PORT:");
-    char *ip = read_str(ns_res->data, "IP:");
+int len = MAX_ACTION_LENGTH+MAX_FILENAME_LENGTH+20;
 
-    client_ss_socket = init_connection(ip, port);
+void ss_connect(char *ip, int port)
+{
+    client_ss_socket = socket(AF_INET, SOCK_STREAM, 0);
+    if(client_ss_socket < 0)
+    {
+        perror("[-] socket error");
+        exit(0);
+    }
+    else
+        printf("[+] client socket created.\n");
+    bzero(&client_addr, sizeof(client_addr));
+    client_addr.sin_family = AF_INET;
+    client_addr.sin_port = htons(port);
+    client_addr.sin_addr.s_addr = inet_addr(ip);
+
+    int cnnct_ret = connect(client_ss_socket, (struct sockaddr*)&client_addr, sizeof(client_addr));
+    if(cnnct_ret < 0)
+    {
+        perror("[-] connect error");
+        exit(0);
+    }
+    else
+        printf("[+] connected to the storage server at port %d.\n", port);
 }
 
-void ss_read_req(char *filepath)
+void ss_read_req(char *action, char *file)
 {
-    buf_t *request;
-    buf_malloc(request, sizeof(char), 2);
-    (*request).len = 2;
+    packet_a req;
+    strcpy(req.action, action);
+    strcpy(req.filename, file);
 
-    // add headers
-    add_str_header(&request[0], "REQUEST:", "READ");
-    add_str_header(&request[1], "FILENAME:", filepath);
+    char request[len];
 
-    // coalesce the buffers
-    buf_t* packet;
-    coalsce_buffers(packet, request);
+    sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
 
-    // send to storage server
-    int send_ret = send(client_ss_socket, CAST(char, packet->data), packet->len, 0);
-    if(send_ret < 0)
+    // send request to ss
+    if(send(client_ss_socket, request, len, 0) < 0)
     {
-        perror("[-] error sending request to storage server");
+        perror("[-] send error");
         exit(0);
     }
 
-    buf_t response;
-    buf_malloc(&response, sizeof(char), 1024);
-    int status = read_i32(client_ss_socket, "STATUS:");
-    if (status == SS_FILE_FOUND) {
-        while(1) {
-            int recv_ret = recv(client_ss_socket, CAST(char, response.data), 1024, MSG_PEEK);
-            if(recv_ret < 0)
-            {
-                perror("[-] error receiving response from storage server");
-                exit(0);
-            }
-            if (response.len == 0) {
-                break;
-            }
-            printf("%s", CAST(char, response.data));
+    // receive feedback from ss
+    char *feedback;
+    packet_c fb;
+    feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
+    sscanf(feedback, "STATUS:%d", &fb.status);
+    // free(feedback);
+
+    if (fb.status == ENOTFOUND || fb.status == EFSERROR)
+    {
+        printf("[-] File not found\n");
+        return;
+    }
+
+    // char *feedback;
+    feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
+    sscanf(feedback, "NUMBYTES:%d", &fb.numbytes);
+    // free(feedback);
+
+    // print everything
+    printf("request that was sent to ss: %s\n", request);
+    printf("feedback that was received from ss: %s\n", feedback);
+    printf("status: %d\n", fb.status);
+    printf("numbytes: %d\n", fb.numbytes);
+
+    // receive data from ss and print to stdout
+    char data[MAX_STR_LENGTH];
+    int num_bytes = fb.numbytes;
+    while(num_bytes > 0)
+    {
+        int bytes = recv(client_ss_socket, data, MAX_STR_LENGTH, 0);
+        if(bytes < 0)
+        {
+            perror("[-] recv error");
+            exit(0);
         }
+        else if(bytes == 0)
+            break;
+        else {
+            num_bytes -= bytes;
+            printf("received data of size %d, remaining: %d\n", bytes, num_bytes);
+        }
+    }
+}
+
+void ss_info_req(char *action, char *file)
+{
+    packet_a req;
+    strcpy(req.action, action);
+    strcpy(req.filename, file);
+
+    char request[len];
+
+    sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
+
+    // send request to ss
+    if(send(client_ss_socket, request, len, 0) < 0)
+    {
+        perror("[-] send error");
+        exit(0);
+    }
+
+    // receive feedback from ss
+    char *feedback;
+    packet_c fb;
+    feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
+    sscanf(feedback, "STATUS:%d", &fb.status);
+    // free(feedback);
+
+    if (fb.status == ENOTFOUND)
+    {
+        printf("[-] File not found\n");
+        return;
+    }
+
+    // char *feedback;
+    feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
+    sscanf(feedback, "SIZE:%d", &fb.numbytes);
+
+    feedback = read_line(client_ss_socket, MAX_FEEDBACK_STRING_LENGTH+20);
+    sscanf(feedback, "PERM:%d", &fb.permissions);
+
+    // print everything
+    printf("request that was sent to ss: %s\n", request);
+    printf("feedback that was received from ss: %s\n", feedback);
+    printf("status: %d\n", fb.status);
+    printf("numbytes: %d\n", fb.numbytes);
+}
+
+void ss_write_req(char *action, char *file)
+{
+    packet_a req;
+    strcpy(req.action, action);
+    strcpy(req.filename, file);
+
+    char request[len];
+
+    req.numbytes = 1000;
+    sprintf(request, "ACTION:%s\nFILENAME:%s\nNUMBYTES:%d\n%n", req.action, req.filename, req.numbytes, &len);
+
+
+    // send request to ss
+    if(send(client_ss_socket, request, len, 0) < 0)
+    {
+        perror("[-] send error in request");
+        exit(0);
+    }
+
+    // send data to ss 
+    char data[MAX_STR_LENGTH];
+    for(int i=0; i<req.numbytes; i++)
+        data[i] = 'a';
+    data[req.numbytes] = '\0';
+    if(send(client_ss_socket, data, req.numbytes, 0) < 0)
+    {
+        perror("[-] send error in data");
+        exit(0);
     }
 }

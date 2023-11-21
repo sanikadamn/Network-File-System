@@ -16,69 +16,98 @@
 ** CPORT:
 **/
 
-
-buf_t *creq_to_ns(char *req, char *file)
+packet_d ns_expect_redirect(char *action, char *file)
 {
-    // send a client request to the name server
-    buf_t *request;
-    buf_malloc(request, sizeof(char), 2);
-    (*request).len = 2;
-    
-    // add headers
-    add_str_header(&request[0], "REQUEST:", req);
-    add_str_header(&request[1], "FILENAME:", file);
-    
-
-    // coalesce the buffers
-    buf_t *packet;
-    coalsce_buffers(packet, request);
-
-    // send to name server
-    int send_ret = send(client_ns_socket, CAST(char, request->data), request->len, 0);
-    if(send_ret < 0)
+    packet_d rd = {0};
+    if(strcasecmp(action, "read") == 0 || strcasecmp(action, "write") == 0 || strcasecmp(action, "info") == 0)
     {
-        perror("[-] error sending request to name server");
-        exit(0);
-    }
+        packet_a req;
+        strcpy(req.action, action);
+        strcpy(req.filename, file);
 
-    // receive response from name server
-    buf_t *response;
-    buf_malloc(response, sizeof(char), 1024);
-    int recv_ret = recv(client_ns_socket, CAST(char, response), 1024, MSG_PEEK);
-    if(recv_ret < 0)
-    {
-        perror("[-] error receiving response from name server");
-        exit(0);
-    }
+        char request[MAX_STR_LENGTH];
+        int len;
 
-    // return the response
-    return response;
+        sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
+
+        // send request to ns
+        if(send(client_ns_socket, request, len, 0) < 0)
+        {
+            perror("[-] send error");
+            exit(0);
+        }
+
+        // expect a redirect packet (type d)
+        char *redirect;
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "STATUS:%d", &rd.status);
+
+        if(rd.status == ENOTFOUND)
+        {
+            printf("[-] File not found\n");
+            return rd;
+        }
+        if(rd.status == ENOSERV)
+        {
+            printf("[-] No servers active\n");
+            return rd;
+        }
+        if(rd.status == ENOPERM)
+        {
+            printf("[-] You do not have permission to access this file\n");
+            return rd;
+        }
+
+        printf("[+] Redirecting to appropriate storage server...\n");
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "IP:%s", rd.ip);
+
+        redirect = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(redirect, "PORT:%d", &rd.port);
+
+        // print everything
+        printf("NS redirected client to SS at %s:%d\n", rd.ip, rd.port);
+        free(redirect);
+    }
+    return rd;
 }
 
-int validate_ns_response(buf_t *response)
+void ns_expect_feedback(char *action, char *file1, char *file2)
 {
-    int status = read_i32(client_ns_socket, "STATUS:");
-    if(status == ENOSERV)
+    if(strcasecmp(action, "create") == 0 || strcasecmp(action, "delete") == 0 || strcasecmp(action, "copy") == 0)
     {
-        printf("[-] no servers exist.\n");
-    }
-    else if(status == ENOTFOUND)
-    {
-        printf("[-] file not found.\n");
-    }
-    else if(status == ENOPERM)
-    {
-        printf("[-] you do not have permission to access this file.\n");
-    }
-    else if(status == NO_ERROR)
-    {
-        printf("[+] file found.\n");
-        return 0;
-    }
-    else
-    {
-        printf("[-] unknown error.\n");
-    }
+        packet_a req;
+        strcpy(req.action, action);
+        strcpy(req.filename, file1);
 
-    return -1;
+        char request[MAX_STR_LENGTH];
+        int len;
+        
+        if(strcasecmp(action, "copy") != 0)
+            sprintf(request, "ACTION:%s\nFILENAME:%s\n%n", req.action, req.filename, &len);
+        else 
+            sprintf(request, "ACTION:%s\nFILENAME:%s\nDESTINATION:%s\n%n", req.action, req.filename, file2, &len);
+
+        // send request to ns
+        if(send(client_ns_socket, request, len, 0) < 0)
+        {
+            perror("[-] send error");
+            return;
+        }
+
+        // expect a feedback packet (type c)
+        char *feedback;
+        packet_c fb = {0};
+        feedback = read_line(client_ns_socket, MAX_STR_LENGTH+20);
+        sscanf(feedback, "STATUS:%d", &fb.status);
+
+        if(fb.status == ENOTFOUND)
+            printf("[-] File not found\n");
+        else if(fb.status == EINVAL)
+            printf("[-] This file cannot be created because it already exists\n");
+        else if(fb.status == OK)
+            printf("[+] 'File %s' action performed successfully\n", action);
+        free(feedback);
+    }
+    return;
 }

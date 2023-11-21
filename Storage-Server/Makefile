@@ -23,9 +23,12 @@ SRCS = \
 	../common/thread_pool.c \
 	../common/packets.c \
 	../common/serialize.c \
+	../common/readline.c \
 	filemap.c \
 	network.c \
 	ssignore.c \
+	client.c \
+	ns.c \
 
 OBJS = $(SRCS:.c=.o)
 
