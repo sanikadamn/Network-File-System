@@ -26,6 +26,7 @@ SRCS = \
 	filemap.c \
 	network.c \
 	ssignore.c \
+	client.c \
 
 OBJS = $(SRCS:.c=.o)
 

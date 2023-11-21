@@ -11,10 +11,13 @@ struct network {
     char ns_port[5];
 };
 
+extern struct network net_details;
+
 extern struct files* ss_files;
 
 int init_connection (char* ip, char* port, int is_server);
 
+void send_heartbeat(void* arg);
 
 struct listen_args {
     tpool_t* thread_pool;

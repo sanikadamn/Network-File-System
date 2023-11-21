@@ -20,6 +20,7 @@
 #include "constants.h"
 #include "filemap.h"
 #include "network.h"
+#include "client.h"
 
 typedef uint32_t u32;
 
@@ -198,7 +199,7 @@ void send_heartbeat(void* arg) {
 	return;
 }
 
-void listen_connections(void* arg) {
+void listen_client_connections(void* arg) {
 	struct listen_args* args = (struct listen_args*)arg;
 	int sockfd = args->sockfd;
 	tpool_t* threadpool = args->thread_pool;
