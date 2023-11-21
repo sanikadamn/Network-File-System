@@ -198,30 +198,6 @@ void send_heartbeat(void* arg) {
 	return;
 }
 
-void respond(void* arg) {
-	int* fd = (int*)arg;
-	int new_fd = *fd;
-	free(fd);
-
-	size_t err;
-	char buffer[1024];
-	while ((err = recv(new_fd, buffer, sizeof(buffer), 0))) {
-
-		if (err == -1) {
-			perror("responding to client :(");
-			continue;
-		}
-
-		fprintf(stderr, "Received: %s\n", buffer);
-		err = send(new_fd, "Hello world", 10, 0);
-		if (err == -1) {
-			perror("sending to client :(");
-		}
-	}
-	close(new_fd);
-	return;
-}
-
 void listen_connections(void* arg) {
 	struct listen_args* args = (struct listen_args*)arg;
 	int sockfd = args->sockfd;
@@ -267,7 +243,7 @@ void listen_connections(void* arg) {
 
 		int* fd = malloc(sizeof(int));
 		*fd = new_fd;
-		tpool_work(threadpool, respond, (void*)fd);
+		tpool_work(threadpool, respond_client, (void*)fd);
 	}
 	return;
 }
